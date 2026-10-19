@@ -22,7 +22,10 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      # 推送 / 手动运行 / 重新运行时都基于最新的 main（重新运行默认检出旧提交，提交回 main 会被拒绝）
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.sha || 'main' }}
       - uses: actions/setup-go@v5
         with:
           go-version: "1.24"
@@ -66,21 +69,35 @@ jobs:
           done
           echo "CHANGED=$changed" >> "$GITHUB_ENV"
 
+      # 有新版本时，或清单还没有签名 / 签名对不上（例如后来才设置私钥、换了私钥）时，签名并提交
       - name: 签名并提交 index.json
-        if: github.event_name != 'pull_request' && env.CHANGED == '1'
+        if: github.event_name != 'pull_request'
         env:
           NOVA_PLUGIN_SIGN_KEY: ${{ secrets.NOVA_PLUGIN_SIGN_KEY }}
         run: |
           set -euo pipefail
+          if [ ! -f index.json ]; then
+            echo "还没有发布过插件"
+            exit 0
+          fi
           if [ -n "${NOVA_PLUGIN_SIGN_KEY}" ]; then
-            go run ./tools/mkrepo sign -index index.json
-            go run ./tools/mkrepo verify -index index.json
+            if [ "${CHANGED:-0}" = "1" ] || ! go run ./tools/mkrepo verify -index index.json >/dev/null 2>&1; then
+              go run ./tools/mkrepo sign -index index.json
+              go run ./tools/mkrepo verify -index index.json
+            else
+              echo "清单签名有效，不需要重新签名"
+            fi
           else
             echo "::warning::没有设置 NOVA_PLUGIN_SIGN_KEY：仓库没有签名，NovaEmby 安装时会要求确认风险"
             rm -f index.json.sig
           fi
+          git add -A   # 只有 index.json、index.json.sig 会变化（dist/ 在 .gitignore 里）
+          if git diff --cached --quiet; then
+            echo "没有需要提交的变化"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A   # 只有 index.json、index.json.sig 会变化（dist/ 在 .gitignore 里）
           git commit -m "发布插件 [skip ci]"
-          git push
+          git pull --rebase origin main
+          git push origin HEAD:main
