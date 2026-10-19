@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/Mzxya/novaemby-plugins/sdk"
 )
@@ -100,6 +101,40 @@ func main() {
 			"GET /api/hello-stats": func(h *sdk.Host, r *sdk.Request) *sdk.Response {
 				b, _ := json.Marshal(map[string]any{"requests": requests.Load(), "dataDir": h.DataDir(), "version": h.Version()})
 				return sdk.Bytes(http.StatusOK, "application/json; charset=utf-8", b)
+			},
+		},
+
+		// 元数据来源（manifest 的 metadata）：媒体库在选项中启用了这个插件后，刮削时为每个条目调用。
+		// 示例只在条目没有标签时补一个标签（配置项 metadataTag），并演示怎样按条目信息判断。
+		// 真实的插件在这里按名称、年份、外部 ID 去查询自己的数据源，联网请用 r.Context。
+		OnMetadata: func(h *sdk.Host, r *sdk.MetadataRequest) (*sdk.Metadata, error) {
+			tag := strings.TrimSpace(h.Config().String("metadataTag"))
+			if tag == "" {
+				return nil, nil // 没有可提供的数据
+			}
+			h.Debug("提供元数据", "type", r.Type, "name", r.Name, "language", r.Language)
+			return &sdk.Metadata{Tags: []string{tag}}, nil
+		},
+
+		// 计划任务（manifest 的 tasks）：键与 manifest 中任务的 key 一致。
+		Tasks: map[string]sdk.TaskFunc{
+			// 把请求计数写进活动日志；计数为 0 时跳过（演示 sdk.Skip）
+			"Report": func(h *sdk.Host, t *sdk.Task) (string, error) {
+				n := requests.Load()
+				if n == 0 {
+					return "", sdk.Skip("还没有人访问过 /api/hello")
+				}
+				for i := 1; i <= 4; i++ { // 演示进度和取消
+					select {
+					case <-t.Context.Done():
+						return "", t.Context.Err()
+					case <-time.After(250 * time.Millisecond):
+					}
+					t.Progress(float64(i) * 25)
+				}
+				msg := fmt.Sprintf("/api/hello 一共被访问了 %d 次", n)
+				_ = h.Activity(t.Context, msg, "", "info")
+				return msg, nil
 			},
 		},
 

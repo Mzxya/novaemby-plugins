@@ -1,20 +1,35 @@
 {
   "id": "hello",
   "name": "示例插件",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "protocol": 1,
-  "description": "演示插件的全部能力：配置项、HTTP 接口、读取条目信息、接收播放事件、写活动记录、保存数据。可以作为写新插件的模板。",
+  "description": "演示插件的全部能力：配置项、HTTP 接口、读取条目信息、接收播放事件、写活动记录、保存数据、元数据来源、计划任务。可以作为写新插件的模板。",
   "author": "NovaEmby",
   "homepage": "https://github.com/Mzxya/novaemby-plugins",
   "entry": {
     "linux/amd64": "bin/hello-linux-amd64",
     "linux/arm64": "bin/hello-linux-arm64"
   },
-  "events": ["playback.started", "metadata.item_ready"],
+  "events": [
+    "playback.started",
+    "metadata.item_ready"
+  ],
   "routes": [
-    { "method": "GET", "path": "/api/hello/{name}", "auth": "none" },
-    { "method": "GET", "path": "/api/hello-item/{id}", "auth": "user" },
-    { "method": "GET", "path": "/api/hello-stats", "auth": "admin" }
+    {
+      "method": "GET",
+      "path": "/api/hello/{name}",
+      "auth": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hello-item/{id}",
+      "auth": "user"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hello-stats",
+      "auth": "admin"
+    }
   ],
   "config": [
     {
@@ -41,7 +56,37 @@
       "default": 1,
       "min": 1,
       "max": 5
+    },
+    {
+      "key": "metadataTag",
+      "type": "string",
+      "label": "补充的标签",
+      "description": "作为元数据来源时，给没有标签的条目补上这个标签（演示用；留空则不提供数据）。需要在媒体库选项中启用本插件才会生效。",
+      "default": "",
+      "maxLength": 30
     }
   ],
-  "memoryLimitMb": 64
+  "memoryLimitMb": 64,
+  "metadata": {
+    "types": [
+      "Movie",
+      "Series"
+    ],
+    "timeoutSec": 5,
+    "concurrency": 2
+  },
+  "tasks": [
+    {
+      "key": "Report",
+      "name": "示例：访问计数报告",
+      "description": "把 /api/hello 的访问次数写进活动日志（演示计划任务、进度、跳过）。",
+      "defaultEnabled": false,
+      "defaultTriggers": [
+        {
+          "type": "daily",
+          "time": "09:00"
+        }
+      ]
+    }
+  ]
 }

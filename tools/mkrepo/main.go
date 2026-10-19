@@ -102,6 +102,16 @@ type manifest struct {
 		Key  string `json:"key"`
 		Type string `json:"type"`
 	} `json:"config"`
+	Metadata *struct {
+		Types []string `json:"types"`
+	} `json:"metadata"`
+	Tasks []struct {
+		Key             string `json:"key"`
+		Name            string `json:"name"`
+		DefaultTriggers []struct {
+			Type string `json:"type"`
+		} `json:"defaultTriggers"`
+	} `json:"tasks"`
 }
 
 var (
@@ -109,6 +119,7 @@ var (
 	semverRe = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$`)
 	platRe   = regexp.MustCompile(`^linux/(amd64|arm64)$`)
 	keyRe    = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]{0,63}$`)
+	taskRe   = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9]{0,15}$`)
 )
 
 func readManifest(dir string) (*manifest, []byte, error) {
@@ -161,6 +172,37 @@ func parseManifest(b []byte) (*manifest, error) {
 		case "string", "text", "secret", "int", "bool", "select":
 		default:
 			return nil, fmt.Errorf("配置项 %s 的 type %q 不支持", c.Key, c.Type)
+		}
+	}
+	if m.Metadata != nil {
+		if len(m.Metadata.Types) == 0 {
+			return nil, errors.New("metadata.types 不能为空（Movie、Series、Season、Episode）")
+		}
+		for _, t := range m.Metadata.Types {
+			switch strings.ToLower(t) {
+			case "movie", "series", "season", "episode":
+			default:
+				return nil, fmt.Errorf("metadata.types 中 %q 不支持（Movie、Series、Season、Episode）", t)
+			}
+		}
+	}
+	seen := map[string]bool{}
+	for _, t := range m.Tasks {
+		switch {
+		case !taskRe.MatchString(t.Key):
+			return nil, fmt.Errorf("任务 key %q 不合法：字母开头，只能有字母和数字，最长 16 个字符", t.Key)
+		case seen[strings.ToLower(t.Key)]:
+			return nil, fmt.Errorf("任务 key %q 重复", t.Key)
+		case strings.TrimSpace(t.Name) == "":
+			return nil, fmt.Errorf("任务 %s 缺少 name", t.Key)
+		}
+		seen[strings.ToLower(t.Key)] = true
+		for _, tr := range t.DefaultTriggers {
+			switch strings.ToLower(tr.Type) {
+			case "daily", "weekly", "interval", "startup":
+			default:
+				return nil, fmt.Errorf("任务 %s 的触发器 type %q 不支持（daily、weekly、interval、startup）", t.Key, tr.Type)
+			}
 		}
 	}
 	return &m, nil

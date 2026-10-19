@@ -284,3 +284,91 @@ func TestConfigHelpers(t *testing.T) {
 	}
 	_ = context.Background()
 }
+
+func TestMetadataAndTasks(t *testing.T) {
+	var gotReq *MetadataRequest
+	var reqMu sync.Mutex
+	rating := 8.94
+	p := &Plugin{
+		OnMetadata: func(h *Host, r *MetadataRequest) (*Metadata, error) {
+			reqMu.Lock()
+			gotReq = r
+			reqMu.Unlock()
+			switch r.Name {
+			case "none":
+				return nil, nil
+			case "error":
+				return nil, errors.New("找不到")
+			}
+			return &Metadata{Name: "名称", Overview: "简介", CommunityRating: &rating,
+				PremiereDate: time.Date(2016, 8, 26, 0, 0, 0, 0, time.UTC), Genres: []string{"动画"},
+				Images: []Image{{Type: "Primary", URL: "https://example.com/p.jpg"}}}, nil
+		},
+		Tasks: map[string]TaskFunc{
+			"Count": func(h *Host, t *Task) (string, error) { t.Progress(50); return "数了 3 个", nil },
+			"Skip":  func(h *Host, t *Task) (string, error) { return "", Skip("没有需要做的") },
+			"Wait": func(h *Host, t *Task) (string, error) {
+				<-t.Context.Done()
+				return "", t.Context.Err()
+			},
+		},
+	}
+	h := startPlugin(t, p)
+	h.init(nil)
+
+	h.send(map[string]any{"id": 2, "method": "metadata.fetch", "params": map[string]any{"language": "zh-CN",
+		"item": map[string]any{"id": "42", "type": "Movie", "name": "Kimi", "providerIds": map[string]string{"Tmdb": "1"},
+			"missingImages": []string{"Primary"}, "seasonNumber": 1}}})
+	m := h.next()
+	res, _ := m["result"].(map[string]any)
+	if res == nil || res["name"] != "名称" || res["premiereDate"] != "2016-08-26" || res["communityRating"] != 8.94 {
+		t.Fatalf("元数据结果: %v", m)
+	}
+	reqMu.Lock()
+	if gotReq.ID != "42" || gotReq.Language != "zh-CN" || gotReq.ProviderIDs["Tmdb"] != "1" || *gotReq.SeasonNumber != 1 ||
+		gotReq.Context == nil || len(gotReq.MissingImages) != 1 {
+		t.Fatalf("请求参数: %+v", gotReq)
+	}
+	reqMu.Unlock()
+	h.send(map[string]any{"id": 3, "method": "metadata.fetch", "params": map[string]any{"item": map[string]any{"name": "none"}}})
+	if m := h.next(); m["result"] != nil || m["error"] != nil {
+		t.Fatalf("没找到应返回 null: %v", m)
+	}
+	h.send(map[string]any{"id": 4, "method": "metadata.fetch", "params": map[string]any{"item": map[string]any{"name": "error"}}})
+	if m := h.next(); m["error"] == nil {
+		t.Fatalf("出错应返回 error: %v", m)
+	}
+
+	// 任务：先收到进度通知，再收到结果
+	h.send(map[string]any{"id": 5, "method": "task.run", "params": map[string]any{"key": "Count", "runId": "r1"}})
+	if m := h.next(); m["method"] != "task.progress" || m["params"].(map[string]any)["runId"] != "r1" ||
+		m["params"].(map[string]any)["percent"] != 50.0 {
+		t.Fatalf("进度通知: %v", m)
+	}
+	if m := h.next(); m["result"].(map[string]any)["message"] != "数了 3 个" {
+		t.Fatalf("任务结果: %v", m)
+	}
+	h.send(map[string]any{"id": 6, "method": "task.run", "params": map[string]any{"key": "Skip", "runId": "r2"}})
+	if m := h.next(); m["result"].(map[string]any)["skipped"] != true {
+		t.Fatalf("跳过: %v", m)
+	}
+	h.send(map[string]any{"id": 7, "method": "task.run", "params": map[string]any{"key": "Nope", "runId": "r3"}})
+	if m := h.next(); m["error"].(map[string]any)["code"] != -32601.0 {
+		t.Fatalf("未知任务: %v", m)
+	}
+	// 取消
+	h.send(map[string]any{"id": 8, "method": "task.run", "params": map[string]any{"key": "Wait", "runId": "r4"}})
+	time.Sleep(50 * time.Millisecond)
+	h.send(map[string]any{"method": "$/cancel", "params": map[string]any{"id": 8}})
+	if m := h.next(); m["id"] != 8.0 || m["error"] == nil {
+		t.Fatalf("取消后应返回错误: %v", m)
+	}
+
+	// 没有实现 OnMetadata
+	h2 := startPlugin(t, &Plugin{})
+	h2.init(nil)
+	h2.send(map[string]any{"id": 2, "method": "metadata.fetch", "params": map[string]any{"item": map[string]any{}}})
+	if m := h2.next(); m["error"].(map[string]any)["code"] != -32601.0 {
+		t.Fatalf("没有实现 OnMetadata: %v", m)
+	}
+}

@@ -57,6 +57,11 @@ type Plugin struct {
 	Routes map[string]HandlerFunc
 	// OnShutdown 插件停止前调用（停用、升级、NovaEmby 关闭）。最多 2 秒，之后进程会被结束。
 	OnShutdown func(h *Host)
+	// OnMetadata 作为元数据来源（manifest 要声明 metadata）：NovaEmby 刮削启用了这个插件的媒体库时，为每个条目调用。
+	// 返回的数据只用来补空字段。可以并发调用（同时最多 manifest 的 metadata.concurrency 个）。
+	OnMetadata MetadataFunc
+	// Tasks 计划任务，键为 manifest 的 tasks 中的 key。到点或管理员点“运行”时调用。
+	Tasks map[string]TaskFunc
 }
 
 // HandlerFunc 处理一个 HTTP 请求。返回 nil 等于 204。
@@ -419,6 +424,10 @@ func (rt *runtime) dispatch(m message) bool {
 		}
 	case "http":
 		rt.handleHTTP(m)
+	case "metadata.fetch":
+		rt.handleMetadata(m)
+	case "task.run":
+		rt.handleTask(m)
 	case "$/cancel":
 		var p struct {
 			ID json.RawMessage `json:"id"`
