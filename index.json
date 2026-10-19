@@ -5,10 +5,23 @@
     {
       "id": "hello",
       "name": "示例插件",
-      "description": "演示插件的全部能力：配置项、HTTP 接口、读取条目信息、接收播放事件、写活动记录、保存数据。可以作为写新插件的模板。",
+      "description": "演示插件的全部能力：配置项、HTTP 接口、读取条目信息、接收播放事件、写活动记录、保存数据、元数据来源、计划任务。可以作为写新插件的模板。",
       "author": "NovaEmby",
       "homepage": "https://github.com/Mzxya/novaemby-plugins",
       "versions": [
+        {
+          "version": "0.2.0",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/Mzxya/novaemby-plugins/releases/download/hello-v0.2.0/hello-0.2.0.zip",
+          "sha256": "81f760f87834b0d250013f5335b20f45e308962f0e180a82e8a6a17a9104b9bf",
+          "size": 3187550,
+          "changelog": "- 新增：作为元数据来源（给没有标签的条目补一个标签，配置项“补充的标签”）。\n- 新增：计划任务“示例：访问计数报告”（默认不启用）。\n- 需要 NovaEmby 13b（旧版本会忽略这两项能力，其余功能照常）。",
+          "releasedAt": 1792439033
+        },
         {
           "version": "0.1.0",
           "protocol": 1,
