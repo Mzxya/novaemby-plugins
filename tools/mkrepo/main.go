@@ -359,10 +359,23 @@ type indexVersion struct {
 	ReleasedAt       int64    `json:"releasedAt,omitempty"`
 }
 
+// defaultIndexName 新建清单时的仓库名称：官方仓库为“NovaEmby 官方插件”，其他仓库按 GitHub 仓库名
+// （Actions 中的环境变量 GITHUB_REPOSITORY），也可以用环境变量 NOVA_REPO_NAME 指定。
+func defaultIndexName() string {
+	if n := strings.TrimSpace(os.Getenv("NOVA_REPO_NAME")); n != "" {
+		return n
+	}
+	repo := strings.TrimSpace(os.Getenv("GITHUB_REPOSITORY"))
+	if repo == "" || strings.EqualFold(repo, "Mzxya/novaemby-plugins") {
+		return "NovaEmby 官方插件"
+	}
+	return repo + " 的插件"
+}
+
 func loadIndex(p string) (*index, error) {
 	b, err := os.ReadFile(p)
 	if errors.Is(err, os.ErrNotExist) {
-		return &index{FormatVersion: 1, Name: "NovaEmby 官方插件", Plugins: []indexEntry{}}, nil
+		return &index{FormatVersion: 1, Name: defaultIndexName(), Plugins: []indexEntry{}}, nil
 	}
 	if err != nil {
 		return nil, err
@@ -547,7 +560,7 @@ func cmdSign(args []string) error {
 	}
 	pub := base64.StdEncoding.EncodeToString(priv.Public().(ed25519.PublicKey))
 	fmt.Printf("已签名 %s（公钥 %s）\n", *p, pub)
-	fmt.Println("这个公钥要与 NovaEmby 的 internal/modules/plugin/pubkey.go 中 officialPubKeyB64 相同，NovaEmby 才会把仓库当作官方签名")
+	fmt.Println("只有官方仓库的签名（公钥内置在 NovaEmby 中）会被认作官方签名；其他仓库的签名按未签名处理")
 	return nil
 }
 
