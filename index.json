@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "name": "NovaEmby 官方插件",
+  "plugins": [
+    {
+      "id": "hello",
+      "name": "示例插件",
+      "description": "演示插件的全部能力：配置项、HTTP 接口、读取条目信息、接收播放事件、写活动记录、保存数据。可以作为写新插件的模板。",
+      "author": "NovaEmby",
+      "homepage": "https://github.com/Mzxya/novaemby-plugins",
+      "versions": [
+        {
+          "version": "0.1.0",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/Mzxya/novaemby-plugins/releases/download/hello-v0.1.0/hello-0.1.0.zip",
+          "sha256": "17e3a98d307c525e609ac3aa2062e0eed1fda27aae4ca29ee5641f8d8dac15aa",
+          "size": 3169127,
+          "releasedAt": 1792432648
+        }
+      ]
+    }
+  ]
+}
