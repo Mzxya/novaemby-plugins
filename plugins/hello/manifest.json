@@ -1,0 +1,47 @@
+{
+  "id": "hello",
+  "name": "示例插件",
+  "version": "0.1.0",
+  "protocol": 1,
+  "description": "演示插件的全部能力：配置项、HTTP 接口、读取条目信息、接收播放事件、写活动记录、保存数据。可以作为写新插件的模板。",
+  "author": "NovaEmby",
+  "homepage": "https://github.com/Mzxya/novaemby-plugins",
+  "entry": {
+    "linux/amd64": "bin/hello-linux-amd64",
+    "linux/arm64": "bin/hello-linux-arm64"
+  },
+  "events": ["playback.started", "metadata.item_ready"],
+  "routes": [
+    { "method": "GET", "path": "/api/hello/{name}", "auth": "none" },
+    { "method": "GET", "path": "/api/hello-item/{id}", "auth": "user" },
+    { "method": "GET", "path": "/api/hello-stats", "auth": "admin" }
+  ],
+  "config": [
+    {
+      "key": "greeting",
+      "type": "string",
+      "label": "问候语",
+      "description": "访问 /api/hello/名字 时返回的问候语。",
+      "default": "你好",
+      "required": true,
+      "maxLength": 20
+    },
+    {
+      "key": "logPlayback",
+      "type": "bool",
+      "label": "记录开始播放",
+      "description": "有人开始播放时，在控制台的活动日志里写一条记录。",
+      "default": false
+    },
+    {
+      "key": "repeat",
+      "type": "int",
+      "label": "重复次数",
+      "description": "问候语重复几次（演示数字配置项，1–5）。",
+      "default": 1,
+      "min": 1,
+      "max": 5
+    }
+  ],
+  "memoryLimitMb": 64
+}

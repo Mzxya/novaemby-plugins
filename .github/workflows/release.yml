@@ -1,0 +1,86 @@
+name: build-and-publish
+
+# 推送到 main 后：检查、测试全部插件；manifest 里的版本号还没发布过的插件，编译 amd64 / arm64、打包、
+# 建 GitHub Release（标签 <插件ID>-v<版本>）上传插件包，更新 index.json 并用官方私钥签名，提交回 main。
+# 私钥放在仓库的 Settings → Secrets and variables → Actions → New repository secret，名字 NOVA_PLUGIN_SIGN_KEY，
+# 值为 novaemby_plugin_sign.pem 的全部内容。没有设置时照常发布，但仓库是“未签名”的（NovaEmby 安装时要确认风险）。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: 检查与测试
+        run: |
+          go vet ./...
+          go test -race -count=1 ./...
+          for dir in plugins/*/; do
+            go run ./tools/mkrepo check -plugin "${dir%/}"
+          done
+
+      - name: 发布新版本
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          changed=0
+          for dir in plugins/*/; do
+            dir="${dir%/}"
+            read -r id version < <(go run ./tools/mkrepo info -plugin "$dir")
+            if go run ./tools/mkrepo has -index index.json -id "$id" -version "$version"; then
+              echo "$id $version 已发布，跳过"
+              continue
+            fi
+            echo "::group::发布 $id $version"
+            read -r zip sha size < <(go run ./tools/mkrepo build -plugin "$dir" -out dist)
+            tag="$id-v$version"
+            notes=""
+            if [ -f "$dir/CHANGELOG/$version.md" ]; then notes="$(cat "$dir/CHANGELOG/$version.md")"; fi
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release upload "$tag" "$zip" --clobber
+            else
+              gh release create "$tag" "$zip" --title "$id $version" --notes "${notes:-$id $version}"
+            fi
+            url="https://github.com/${{ github.repository }}/releases/download/$tag/$(basename "$zip")"
+            go run ./tools/mkrepo add -index index.json -zip "$zip" -url "$url" -changelog "$notes"
+            changed=1
+            echo "::endgroup::"
+          done
+          echo "CHANGED=$changed" >> "$GITHUB_ENV"
+
+      - name: 签名并提交 index.json
+        if: github.event_name != 'pull_request' && env.CHANGED == '1'
+        env:
+          NOVA_PLUGIN_SIGN_KEY: ${{ secrets.NOVA_PLUGIN_SIGN_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${NOVA_PLUGIN_SIGN_KEY}" ]; then
+            go run ./tools/mkrepo sign -index index.json
+            go run ./tools/mkrepo verify -index index.json
+          else
+            echo "::warning::没有设置 NOVA_PLUGIN_SIGN_KEY：仓库没有签名，NovaEmby 安装时会要求确认风险"
+            rm -f index.json.sig
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A   # 只有 index.json、index.json.sig 会变化（dist/ 在 .gitignore 里）
+          git commit -m "发布插件 [skip ci]"
+          git push
