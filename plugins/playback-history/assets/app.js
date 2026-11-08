@@ -141,7 +141,11 @@ function renderSessions(records,at) {
   }).join(""):empty("暂无未结束会话","新的播放开始后将在这里展示");
 }
 function posterURLs(rec) {const ids=[rec.itemId,rec.seriesId].filter((id,i,a)=>id&&a.indexOf(id)===i);return ["/emby",""].flatMap(prefix=>ids.map(id=>`${prefix}/Items/${encodeURIComponent(id)}/Images/Primary?maxWidth=180&quality=75`));}
-function poster(rec,title) {const urls=posterURLs(rec);return `<div class="poster"><span>${esc((title||"?").slice(0,1))}</span>${urls.length?`<img src="${esc(urls[0])}" data-fallbacks="${esc(JSON.stringify(urls.slice(1)))}" alt="" loading="lazy">`:""}</div>`;}
+function poster(rec,title,inline=false) {
+  const urls = posterURLs(rec);
+  const tag = inline ? "span" : "div";
+  return `<${tag} class="poster"><span>${esc((title||"?").slice(0,1))}</span>${urls.length?`<img src="${esc(urls[0])}" data-fallbacks="${esc(JSON.stringify(urls.slice(1)))}" alt="" loading="lazy">`:""}</${tag}>`;
+}
 function renderPopular(items) {$("popularList").innerHTML=items.length?items.map((item,i)=>`<article class="popular-row">${poster(item,item.title)}<div class="popular-info"><strong title="${esc(item.title)}">${esc(item.title)}</strong><small>${item.itemType==="Movie"?"电影":item.itemType==="Episode"?"剧集":"视频"} · ${duration(item.totalWatchSeconds)}</small></div><span class="popular-number">${count(item.playCount)}<small>次</small></span></article>`).join(""):empty("暂无热门内容","按所选范围的播放次数排序");}
 function renderTypes(types) {
   const total=types.reduce((n,t)=>n+number(t.count),0),r=43,c=2*Math.PI*r;let offset=0;
@@ -150,7 +154,26 @@ function renderTypes(types) {
   $("typeChart").innerHTML=`<svg class="donut" viewBox="0 0 120 120" role="img" aria-label="内容分布，共 ${total} 次播放"><circle class="donut-bg" cx="60" cy="60" r="${r}"/>${segments}<text class="donut-total" x="60" y="60" text-anchor="middle">${count(total)}</text><text class="donut-caption" x="60" y="78" text-anchor="middle">总播放次数</text></svg><div class="type-legend">${legend}</div>`;
 }
 function renderHours(rows) {const max=Math.max(1,...rows.map(h=>number(h.playCount)));$("hourChart").innerHTML=rows.map(h=>`<div class="hour-bar ${h.playCount===max?"peak":""}" title="${h.hour}:00 · ${count(h.playCount)} 次"><i data-height="${number(h.playCount)/max*100}"></i></div>`).join("");$("hourChart").setAttribute("aria-label",rows.map(h=>`${h.hour}点${h.playCount}次`).join("；"));}
-function renderRecent(records) {$("recentList").innerHTML=records.length?records.map(rec=>`<article class="recent-card">${poster(rec,rec.itemName)}<div class="recent-info"><strong title="${esc(displayTitle(rec))}">${esc(displayTitle(rec))}</strong><small>${esc(rec.userName)} · ${localTime(rec.startedAt)}</small></div></article>`).join(""):empty("暂无近期播放","从插件运行后开始积累");}
+function renderRecent(records) {
+  $("recentList").innerHTML = records.length ? records.map(rec => {
+    const title = displayTitle(rec);
+    const query = rec.itemName || rec.seriesName || "";
+    return `<button class="recent-card" type="button" data-history-query="${esc(query)}" aria-label="查看 ${esc(title)} 的播放记录">${poster(rec,rec.itemName,true)}<span class="recent-info"><strong>${esc(title)}</strong><small>${esc(rec.userName)} · ${localTime(rec.startedAt)}</small></span><span class="row-chevron" aria-hidden="true">›</span></button>`;
+  }).join("") : empty("还没有播放记录", "播放视频后，你的观看足迹会出现在这里");
+}
+function openRecent(query) {
+  $("filterForm").reset();
+  state.mode = "records";
+  state.sort = "recent";
+  state.filters = {q:query,type:"",status:"",from:"",to:""};
+  $("searchInput").value = query;
+  document.querySelectorAll("[data-mode]").forEach(el => {
+    el.classList.toggle("selected",el.dataset.mode==="records");
+    el.setAttribute("aria-pressed",String(el.dataset.mode==="records"));
+  });
+  updateFilterCount();
+  setScreen("history");
+}
 function applyBars() {document.querySelectorAll("[data-width]").forEach(el=>{el.style.width=Math.min(100,number(el.dataset.width))+"%";});document.querySelectorAll("[data-height]").forEach(el=>{el.style.height=Math.min(100,number(el.dataset.height))+"%";});}
 function bindPosters() {
   document.querySelectorAll(".poster img").forEach(img=>{
@@ -176,10 +199,11 @@ function renderHistory(data) {
   applyBars();bindPosters();
 }
 function setScreen(screen) {
+  if (!["board","history"].includes(screen)) return;
   state.screen=screen;state.page=1;
   $("boardView").classList.toggle("hidden",screen!=="board");$("historyView").classList.toggle("hidden",screen!=="history");
   for(const [id,which] of [["boardTab","board"],["historyTab","history"]]) {$(id).classList.toggle("selected",screen===which);$(id).setAttribute("aria-pressed",String(screen===which));}
-  $("windowChips").classList.toggle("hidden",screen!=="board");$("pageTitle").innerHTML=screen==="board"?'<span class="desktop-title">每一次播放，尽收眼底<span class="title-dot">.</span></span><span class="mobile-title">播放概况</span>':'<span class="desktop-title">回看每一段播放足迹<span class="title-dot">.</span></span><span class="mobile-title">播放明细</span>';
+  $("windowChips").classList.toggle("hidden",screen!=="board");$("pageTitle").innerHTML=screen==="board"?'<span class="desktop-title">播放概况</span><span class="mobile-title">概况</span>':'<span class="desktop-title">播放记录</span><span class="mobile-title">记录</span>';
   $("manageMode").checked=false;syncSort();
   if(isMobile()) window.scrollTo?.({top:0,behavior:"auto"});
   loadData();
@@ -199,6 +223,10 @@ async function clearRecords() {
 function updateAutoRefresh() {clearInterval(state.timer);state.timer=null;if($("autoRefresh").checked)state.timer=setInterval(()=>{if(!document.hidden)loadData(false);},60000);}
 function updateClock() {const now=new Date();$("clockTime").textContent=now.toLocaleTimeString("zh-CN",{hour12:false});$("clockDate").textContent=now.toLocaleDateString("zh-CN",{year:"numeric",month:"2-digit",day:"2-digit",weekday:"short"});}
 function bindEvents() {
+  $("recentList").addEventListener("click", event => {
+    const card = event.target.closest("[data-history-query]");
+    if (card) openRecent(card.dataset.historyQuery);
+  });
   $("trendDate").addEventListener("change", event => {
     state.trendDate = event.target.value;
     syncTrendDetail(state.board?.daily || []);

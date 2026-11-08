@@ -90,13 +90,13 @@ test("自动刷新跳过后台标签页，支持 /emby/history 前缀",async()=>
 test("首次默认亮色，右上角可切换并在下次打开恢复选择",()=>{
   const p=page(async()=>response(board()));
   assert.equal(p.document.documentElement.dataset.theme,"light");
-  assert.equal(p.meta.attrs.get("content"),"#f3f6fa");
+  assert.equal(p.meta.attrs.get("content"),"#f6f7f9");
   p.run("bindEvents()");
   p.elements.get("themeButton").listeners.get("click")();
   assert.equal(p.document.documentElement.dataset.theme,"dark");
   assert.equal(p.elements.get("themeButton").attrs.get("aria-label"),"切换到亮色主题");
   assert.equal(p.elements.get("themeButton").attrs.get("aria-pressed"),"true");
-  assert.equal(p.meta.attrs.get("content"),"#0b1019");
+  assert.equal(p.meta.attrs.get("content"),"#10141d");
   const restored=page(async()=>response(board()),"/history",{theme:p.saved.get("novaemby.playback-history.theme")});
   assert.equal(restored.document.documentElement.dataset.theme,"dark");
   restored.run("window.NovaTheme.toggle()");
@@ -148,4 +148,22 @@ test("手机趋势支持日期选择、点按和键盘，无需额外请求",asy
   p.run("renderTrend(state.board.daily)");assert.equal(p.elements.get("trendDate").value,"2026-11-07");
   p.run('syncTrendDetail([{date:"2026-11-08",watchSeconds:180,playCount:3}])');assert.equal(p.elements.get("trendDate").value,"2026-11-08");
   assert.equal(calls,count);
+});
+
+
+test("最近播放卡片进入该内容记录，清除旧筛选并保持管理关闭",async()=>{
+  const requests=[];
+  const p=page(async url=>{requests.push(url);return response(url.endsWith("/users")?users:url.includes("/records")?{records:[],total:0,page:1,pages:0,stats:{}}:board());},"/history",{width:390});
+  await p.run("init()");
+  p.run('state.mode="items";state.filters.status="completed"');
+  p.elements.get("manageMode").checked=true;
+  p.elements.get("recentList").listeners.get("click")({target:{closest:()=>({dataset:{historyQuery:"测试影片"}})}});
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(p.run("state.screen"),"history");
+  assert.equal(p.run("state.mode"),"records");
+  assert.equal(p.run("state.filters.q"),"测试影片");
+  assert.equal(p.run("state.filters.status"),"");
+  assert.equal(p.elements.get("manageMode").checked,false);
+  assert.equal(p.elements.get("filterCount").textContent,"已选 1 项");
+  assert.ok(requests.some(url=>url.includes("/records?")&&new URLSearchParams(url.split("?")[1]).get("q")==="测试影片"));
 });

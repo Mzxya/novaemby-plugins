@@ -9,7 +9,7 @@
     theme = value === "dark" ? "dark" : "light";
     document.documentElement.dataset.theme = theme;
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", theme === "dark" ? "#0b1019" : "#f3f6fa");
+    if (meta) meta.setAttribute("content", theme === "dark" ? "#10141d" : "#f6f7f9");
     const button = document.getElementById("themeButton");
     if (button) {
       const next = theme === "dark" ? "亮色" : "暗色";

@@ -4,3 +4,5 @@ dist/
 
 # 本地与 CI 构建的安装包统一输出目录
 /plugins/插件安装包/
+__pycache__/
+*.py[cod]
