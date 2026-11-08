@@ -37,3 +37,9 @@ https://raw.githubusercontent.com/Mzxya/novaemby-plugins/main/index.json
 ## 安全
 
 插件是在 NovaEmby 容器里运行的程序，能联网、能读容器里的文件，**不是沙箱**。只安装信任的插件。官方仓库的插件经过审核并签名；其他仓库的插件安装时 NovaEmby 会要求确认风险。
+
+## 历史播放记录（社区插件）
+
+新增 [playback-history](plugins/playback-history/README.md)：手机优先的播放看板、用户历史查询、媒体信息补全和定时清理。默认亮色并支持暗色切换。使用前需开启宿主播放开始 / 停止通知；查询与管理页面适用于可信内网。
+
+安装包构建输出至 `plugins/插件安装包/`，该目录不提交 Git。插件说明、统计边界和构建命令见插件目录 README。

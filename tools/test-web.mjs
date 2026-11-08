@@ -1,0 +1,151 @@
+// Node 内置测试，无第三方依赖；不代替真实浏览器布局验收。
+import {readFileSync} from "node:fs";
+import vm from "node:vm";
+import test from "node:test";
+import assert from "node:assert/strict";
+const html=readFileSync(new URL("../plugins/playback-history/assets/index.html",import.meta.url),"utf8");
+const themeSource=readFileSync(new URL("../plugins/playback-history/assets/theme.js",import.meta.url),"utf8");
+const source=readFileSync(new URL("../plugins/playback-history/assets/app.js",import.meta.url),"utf8").replace(/init\(\);\s*$/,"");
+function page(fetch,pathname="/history",options={}) {
+  const elements=new Map(),intervals=new Map(),documentEvents=new Map();let intervalID=0;
+  for(const match of html.matchAll(/<[^>]+id="([^"]+)"[^>]*>/g)) {
+    const classes=new Set((match[0].match(/class="([^"]+)"/)?.[1]||"").split(" "));
+    const attrs=new Map(),listeners=new Map(),child={textContent:""};
+    elements.set(match[1],{value:"",checked:match[0].includes(" checked"),hidden:false,textContent:"",innerHTML:"",style:{},attrs,listeners,
+      classList:{add:x=>classes.add(x),remove:x=>classes.delete(x),contains:x=>classes.has(x),toggle(x,on){const value=on??!classes.has(x);value?classes.add(x):classes.delete(x);return value;}},
+      getBoundingClientRect:()=>({left:10,width:352}),setAttribute:(k,v)=>attrs.set(k,v),addEventListener:(k,v)=>listeners.set(k,v),
+      querySelector:()=>child,insertAdjacentHTML(_,s){this.innerHTML+=s;},
+      reset(){for(const id of ["searchInput","typeFilter","statusFilter","fromFilter","toFilter"])elements.get(id).value="";}
+    });
+  }
+  const saved=new Map(options.theme?[["novaemby.playback-history.theme",options.theme]]:[]);
+  const windowEvents=new Map();
+  const storage=options.blockStorage?{getItem(){throw new Error("blocked");},setItem(){throw new Error("blocked");}}:{getItem:key=>saved.get(key)||null,setItem:(key,value)=>saved.set(key,value)};
+  const window={innerWidth:options.width||1440,matchMedia(){return {matches:this.innerWidth<=760};},scrollTo(){},addEventListener:(key,value)=>windowEvents.set(key,value),localStorage:storage};
+  const meta={attrs:new Map(),setAttribute(key,value){this.attrs.set(key,value);}};
+  const document={hidden:false,fullscreenElement:null,documentElement:{dataset:{theme:"light"},requestFullscreen:async()=>{}},querySelector:()=>meta,
+    getElementById:id=>elements.get(id)||null,querySelectorAll:()=>[],addEventListener:(k,v)=>documentEvents.set(k,v)};
+  const context=vm.createContext({document,window,location:{pathname},fetch,Headers,URLSearchParams,AbortController,setTimeout,clearTimeout,
+    setInterval(fn,ms){const id=++intervalID;intervals.set(id,{fn,ms});return id;},clearInterval:id=>intervals.delete(id),confirm:()=>false});
+  vm.runInContext(themeSource,context);
+  vm.runInContext(source,context);
+  return {context,elements,document,intervals,saved,meta,windowEvents,run:code=>vm.runInContext(code,context)};
+}
+const response=data=>({ok:true,json:async()=>data});
+const board=(plays=4)=>({at:"2026-11-08T12:00:00Z",from:"2026-10-10",to:"2026-11-08",days:30,stats:{totalPlayCount:plays,totalWatchSeconds:7200,uniqueItems:2,completedCount:1},today:{totalPlayCount:1,totalWatchSeconds:100},activeTotal:0,active:[],recent:[],users:[],popular:[],daily:[{date:"2026-11-08",watchSeconds:7200,playCount:plays}],hours:Array.from({length:24},(_,hour)=>({hour,playCount:hour===12?plays:0})),types:[{type:"Movie",count:plays}]});
+const users={users:[{key:"name:alice",name:"Alice",playCount:4}]};
+
+test("页面完整初始化、图表和指标渲染、自动更新默认开启",async()=>{
+  const urls=[];const p=page(async url=>{urls.push(url);return response(url.includes("/dashboard")?board():users);});
+  await p.run("init()");
+  assert.equal(p.elements.get("statPlays").textContent,"4");
+  assert.match(p.elements.get("trendChart").innerHTML,/<svg/);
+  assert.match(p.elements.get("typeChart").innerHTML,/donut-segment/);
+  assert.equal((p.elements.get("hourChart").innerHTML.match(/class="hour-bar/g)||[]).length,24);
+  assert.equal(p.elements.get("loading").classList.contains("hidden"),true);
+  assert.ok([...p.intervals.values()].some(t=>t.ms===60000));
+  assert.deepEqual(urls,["/history/dashboard?days=30","/history/users"]);
+});
+
+test("快速切换用户，忽略迟到的旧响应",async()=>{
+  const pending=[];const p=page((url,options)=>new Promise(resolve=>pending.push({url,options,resolve})));
+  const old=p.run("loadData()");const latest=p.run('state.user="name:alice";loadData()');
+  assert.equal(pending[0].options.signal.aborted,true);assert.match(pending[2].url,/user=name%3Aalice/);
+  pending[2].resolve(response(board(9)));pending[3].resolve(response(users));await latest;
+  pending[0].resolve(response(board(1)));pending[1].resolve(response(users));await old;
+  assert.equal(p.elements.get("statPlays").textContent,"9");assert.match(p.elements.get("scopeCaption").textContent,/Alice/);
+});
+
+test("明细独立分页、继承用户筛选，统计使用服务端全量结果",async()=>{
+  const urls=[];const p=page(async url=>{urls.push(url);return response(url.endsWith("/users")?users:{records:[],total:100,page:2,pages:9,stats:{totalWatchSeconds:3600,completedCount:50}});});
+  await p.run('state.screen="history";state.user="name:alice";state.page=2;state.filters.q="电影";loadData()');
+  assert.match(urls[0],/\/records\?/);assert.match(urls[0],/page=2/);assert.match(urls[0],/user=name%3Aalice/);assert.ok(!urls[0].includes("days="));
+  assert.match(p.elements.get("historySummary").textContent,/100 条记录/);assert.match(p.elements.get("historySummary").textContent,/50 次/);
+  assert.equal(p.elements.get("pageNumber").textContent,"2 / 9");assert.ok(p.elements.get("clearButton").classList.contains("hidden"));
+});
+
+test("同步失败保留旧数据，用户列表失败不阻断看板",async()=>{
+  let fail=false;const p=page(async url=>{if(fail)throw new Error("网络中断");if(url.endsWith("/users"))throw new Error("用户列表故障");return response(board(7));});
+  await p.run("loadData()");assert.equal(p.elements.get("statPlays").textContent,"7");assert.match(p.elements.get("errorBanner").textContent,/用户列表/);
+  fail=true;await p.run("loadData()");assert.equal(p.elements.get("statPlays").textContent,"7");assert.match(p.elements.get("errorBanner").textContent,/保留上次/);
+});
+
+test("用户和片名文本转义；管理关闭时不能发删除请求",async()=>{
+  const urls=[];const data=board();data.recent=[{itemName:'<img src=x onerror=alert(1)>',userName:'<script>x</script>',startedAt:data.at}];
+  const p=page(async url=>{urls.push(url);return response(url.endsWith("/users")?users:data);});
+  await p.run("loadData()");const rendered=p.elements.get("recentList").innerHTML;
+  assert.ok(rendered.includes("&lt;img"));assert.ok(!rendered.includes("<script>"));
+  const n=urls.length;await p.run('deleteRecord("1")');await p.run("clearRecords()");assert.equal(urls.length,n);
+});
+
+test("自动刷新跳过后台标签页，支持 /emby/history 前缀",async()=>{
+  const urls=[];const p=page(async url=>{urls.push(url);return response(url.endsWith("/users")?users:board());},"/emby/history/");
+  await p.run("init()");assert.match(urls[0],/^\/emby\/history\/dashboard/);
+  const timer=[...p.intervals.values()].find(t=>t.ms===60000),n=urls.length;
+  p.document.hidden=true;timer.fn();assert.equal(urls.length,n);
+  p.document.hidden=false;timer.fn();await new Promise(resolve=>setTimeout(resolve,0));assert.equal(urls.length,n+2);
+});
+
+
+test("首次默认亮色，右上角可切换并在下次打开恢复选择",()=>{
+  const p=page(async()=>response(board()));
+  assert.equal(p.document.documentElement.dataset.theme,"light");
+  assert.equal(p.meta.attrs.get("content"),"#f3f6fa");
+  p.run("bindEvents()");
+  p.elements.get("themeButton").listeners.get("click")();
+  assert.equal(p.document.documentElement.dataset.theme,"dark");
+  assert.equal(p.elements.get("themeButton").attrs.get("aria-label"),"切换到亮色主题");
+  assert.equal(p.elements.get("themeButton").attrs.get("aria-pressed"),"true");
+  assert.equal(p.meta.attrs.get("content"),"#0b1019");
+  const restored=page(async()=>response(board()),"/history",{theme:p.saved.get("novaemby.playback-history.theme")});
+  assert.equal(restored.document.documentElement.dataset.theme,"dark");
+  restored.run("window.NovaTheme.toggle()");
+  assert.equal(restored.document.documentElement.dataset.theme,"light");
+  assert.equal(restored.saved.get("novaemby.playback-history.theme"),"light");
+});
+
+test("存储不可用或偏好无效时默认亮色，仍能切换",()=>{
+  const p=page(async()=>response(board()),"/history",{blockStorage:true});
+  assert.equal(p.document.documentElement.dataset.theme,"light");
+  assert.doesNotThrow(()=>p.run("window.NovaTheme.toggle()"));
+  assert.equal(p.document.documentElement.dataset.theme,"dark");
+  const invalid=page(async()=>response(board()),"/history",{theme:"unsupported"});
+  assert.equal(invalid.document.documentElement.dataset.theme,"light");
+  invalid.windowEvents.get("storage")({key:"novaemby.playback-history.theme",newValue:"dark"});
+  assert.equal(invalid.document.documentElement.dataset.theme,"dark");
+  invalid.windowEvents.get("storage")({key:null,newValue:null});
+  assert.equal(invalid.document.documentElement.dataset.theme,"light");
+});
+
+
+test("手机筛选默认收起，提交后更新条件并收起，旋转宽度切换保留正确状态",async()=>{
+  const urls=[];const p=page(async url=>{urls.push(url);return response(url.endsWith("/users")?users:url.includes("/records")?{records:[],total:0,page:1,pages:0,stats:{}}:board());},"/history",{width:390});
+  await p.run("init()");assert.equal(p.elements.get("historyFilters").open,false);
+  await p.run('state.screen="history";loadData()');
+  p.elements.get("historyFilters").open=true;
+  p.elements.get("searchInput").value="手机端影片";
+  p.elements.get("fromFilter").value="2026-11-01";
+  p.elements.get("filterForm").listeners.get("submit")({preventDefault(){}});
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(p.elements.get("historyFilters").open,false);
+  assert.equal(p.elements.get("filterCount").textContent,"已选 2 项");
+  assert.ok(urls.some(url=>url.includes("from=2026-11-01")&&url.includes("/records")));
+  p.elements.get("historyFilters").open=true;p.run("syncMobileLayout()");assert.equal(p.elements.get("historyFilters").open,true);
+  p.run("window.innerWidth=1200;syncMobileLayout()");assert.equal(p.elements.get("historyFilters").open,true);
+  p.run("window.innerWidth=390;syncMobileLayout()");assert.equal(p.elements.get("historyFilters").open,false);
+});
+
+test("手机趋势支持日期选择、点按和键盘，无需额外请求",async()=>{
+  const data=board();data.daily=[{date:"2026-11-06",watchSeconds:60,playCount:1},{date:"2026-11-07",watchSeconds:120,playCount:2},{date:"2026-11-08",watchSeconds:180,playCount:3}];
+  let calls=0;const p=page(async url=>{calls++;return response(url.endsWith("/users")?users:data);},"/history",{width:390});
+  await p.run("init()");const count=calls;
+  assert.equal(p.elements.get("trendDate").value,"2026-11-08");
+  p.elements.get("trendDate").listeners.get("change")({target:{value:"2026-11-07"}});
+  assert.match(p.elements.get("trendDetail").textContent,/2 次播放/);
+  p.elements.get("trendChart").listeners.get("click")({clientX:48});assert.equal(p.elements.get("trendDate").value,"2026-11-06");
+  p.elements.get("trendChart").listeners.get("keydown")({key:"End",preventDefault(){}});assert.equal(p.elements.get("trendDate").value,"2026-11-08");
+  p.elements.get("trendChart").listeners.get("keydown")({key:"ArrowLeft",preventDefault(){}});assert.equal(p.elements.get("trendDate").value,"2026-11-07");
+  p.run("renderTrend(state.board.daily)");assert.equal(p.elements.get("trendDate").value,"2026-11-07");
+  p.run('syncTrendDetail([{date:"2026-11-08",watchSeconds:180,playCount:3}])');assert.equal(p.elements.get("trendDate").value,"2026-11-08");
+  assert.equal(calls,count);
+});

@@ -30,11 +30,19 @@ jobs:
         with:
           go-version: "1.24"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: 检查与测试
         run: |
+          node --check plugins/playback-history/assets/theme.js
+          node --check plugins/playback-history/assets/app.js
+          node tools/test-web.mjs
           go vet ./...
           go test -race -count=1 ./...
           for dir in plugins/*/; do
+            [ -f "${dir%/}/manifest.json" ] || continue
             go run ./tools/mkrepo check -plugin "${dir%/}"
           done
 
@@ -46,6 +54,7 @@ jobs:
           set -euo pipefail
           changed=0
           for dir in plugins/*/; do
+            [ -f "${dir%/}/manifest.json" ] || continue
             dir="${dir%/}"
             read -r id version < <(go run ./tools/mkrepo info -plugin "$dir")
             if go run ./tools/mkrepo has -index index.json -id "$id" -version "$version"; then
@@ -53,7 +62,7 @@ jobs:
               continue
             fi
             echo "::group::发布 $id $version"
-            read -r zip sha size < <(go run ./tools/mkrepo build -plugin "$dir" -out dist)
+            read -r zip sha size < <(go run ./tools/mkrepo build -plugin "$dir" -out "plugins/插件安装包")
             tag="$id-v$version"
             notes=""
             if [ -f "$dir/CHANGELOG/$version.md" ]; then notes="$(cat "$dir/CHANGELOG/$version.md")"; fi
@@ -91,7 +100,7 @@ jobs:
             echo "::warning::没有设置 NOVA_PLUGIN_SIGN_KEY：仓库没有签名，NovaEmby 安装时会要求确认风险"
             rm -f index.json.sig
           fi
-          git add -A   # 只有 index.json、index.json.sig 会变化（dist/ 在 .gitignore 里）
+          git add -A   # 只有 index.json、index.json.sig 会变化（安装包目录在 .gitignore 里）
           if git diff --cached --quiet; then
             echo "没有需要提交的变化"
             exit 0
