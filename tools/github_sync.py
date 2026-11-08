@@ -15,7 +15,7 @@ PLUGIN = "plugins/playback-history"
 EXCLUDED = {".git", ".aws", ".codex", ".agents", "node_modules", "__pycache__", "data", "bin", "dist"}
 SOURCE_EXT = {".go", ".md"}
 ASSET_EXT = {".js", ".css", ".html", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico", ".woff", ".woff2", ".ttf", ".otf", ".json"}
-INFRA = ("go.mod", "go.sum", "tools/test-web.mjs", "tools/upload-to-github.sh", "tools/github_sync.py", "tools/test_github_sync.py", ".github/workflows/release.yml")
+INFRA = ("go.mod", "go.sum", "tools/test-web.mjs", "tools/upload-to-github.sh", "tools/github_sync.py", "tools/test_github_sync.py", "tools/github_publish.py", "tools/test_github_publish.py", ".github/workflows/release.yml")
 BLOCKED_CONTENT = (
     re.compile(rb"-----BEGIN (?:[A-Z0-9]+ )?PRIVATE KEY-----"),
     re.compile(rb"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{30,})\b"),

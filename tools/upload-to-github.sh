@@ -206,8 +206,8 @@ if [[ "$task_changed" == yes ]]; then
   echo "源码已更新到 $task_version，GitHub 将自动检查并构建安装包。"
 else
   # 没有代码变化时，只重试尚未生成安装包的构建，不制造新版本。
-  if gh release view "playback-history-v$task_version" --repo "$task_repo" >/dev/null 2>&1; then
-    echo "版本 $task_version 已有安装包，无需重新发布。"
+  if python3 "$task_script_dir/github_publish.py" check "$task_repo" "$task_branch" "$task_version"; then
+    echo "版本 $task_version 的安装包与索引均已确认，无需重新发布。"
   else
     gh run list --repo "$task_repo" --workflow release.yml --branch "$task_branch" --limit 10 \
       --json headSha,status > "$task_tmp_dir/runs.json"
@@ -227,6 +227,14 @@ PYRUN
   fi
 fi
 task_commit="$(git -C "$task_checkout" rev-parse HEAD)"
+echo "源码已同步，继续确认构建和索引，可能需要几分钟…"
+if ! python3 "$task_script_dir/github_publish.py" check "$task_repo" "$task_branch" "$task_version"; then
+  python3 "$task_script_dir/github_publish.py" wait "$task_repo" "$task_commit"
+  if ! python3 "$task_script_dir/github_publish.py" check "$task_repo" "$task_branch" "$task_version"; then
+    echo "构建显示成功，但索引或安装包仍不完整。请把本次终端输出发来排查；不要手动向索引填假地址。" >&2
+    exit 1
+  fi
+fi
 echo "完成：https://github.com/$task_repo/commit/$task_commit"
 echo "构建进度：https://github.com/$task_repo/actions"
 echo "安装包：https://github.com/$task_repo/releases"

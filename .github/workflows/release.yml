@@ -40,6 +40,7 @@ jobs:
           node --check plugins/playback-history/assets/app.js
           node tools/test-web.mjs
           python3 tools/test_github_sync.py
+          python3 tools/test_github_publish.py
           go vet ./...
           go test -race -count=1 ./...
           for dir in plugins/*/; do
