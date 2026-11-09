@@ -35,6 +35,28 @@
           "releasedAt": 1792432648
         }
       ]
+    },
+    {
+      "id": "playback-history",
+      "name": "历史播放记录",
+      "description": "NovaEmby 播放看板，手机优先并兼容大屏：统一展示播放概况、观看趋势、未结束会话、用户排行、热门内容和内容分布。支持 7/30/90 天、按用户查看、全屏展示及独立播放明细查询。开启系统播放开始/停止通知后采集历史。",
+      "author": "NovaEmby 社区",
+      "homepage": "/history",
+      "versions": [
+        {
+          "version": "0.5.2",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/jenley/novaemby-plugins/releases/download/playback-history-v0.5.2/playback-history-0.5.2.zip",
+          "sha256": "d45779e042bbfe3ff34c40ebe96a35d0611b4bb48b12639bea19ed08c8814cd8",
+          "size": 3696013,
+          "changelog": "从 0.5.1 升级至 0.5.2，同步本地源码更新。\n\n修改文件：\n\n- `plugins/playback-history/README.md`\n- `plugins/playback-history/web_test.mjs`",
+          "releasedAt": 1794189120
+        }
+      ]
     }
   ]
 }
