@@ -3,9 +3,9 @@ import {readFileSync} from "node:fs";
 import vm from "node:vm";
 import test from "node:test";
 import assert from "node:assert/strict";
-const html=readFileSync(new URL("../plugins/playback-history/assets/index.html",import.meta.url),"utf8");
-const themeSource=readFileSync(new URL("../plugins/playback-history/assets/theme.js",import.meta.url),"utf8");
-const source=readFileSync(new URL("../plugins/playback-history/assets/app.js",import.meta.url),"utf8").replace(/init\(\);\s*$/,"");
+const html=readFileSync(new URL("./assets/index.html",import.meta.url),"utf8");
+const themeSource=readFileSync(new URL("./assets/theme.js",import.meta.url),"utf8");
+const source=readFileSync(new URL("./assets/app.js",import.meta.url),"utf8").replace(/init\(\);\s*$/,"");
 function page(fetch,pathname="/history",options={}) {
   const elements=new Map(),intervals=new Map(),documentEvents=new Map();let intervalID=0;
   for(const match of html.matchAll(/<[^>]+id="([^"]+)"[^>]*>/g)) {

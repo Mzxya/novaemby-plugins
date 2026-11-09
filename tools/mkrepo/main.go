@@ -2,9 +2,9 @@
 //
 //	go run ./tools/mkrepo info   -plugin plugins/hello                 # 输出 "id 版本"
 //	go run ./tools/mkrepo check  -plugin plugins/hello                 # 检查 manifest.json
-//	go run ./tools/mkrepo build  -plugin plugins/hello -out plugins/插件安装包       # 编译 amd64 / arm64 并打包成 plugins/插件安装包/hello-0.1.0.zip
+//	go run ./tools/mkrepo build  -plugin plugins/hello -out dist       # 编译 amd64 / arm64 并打包成 dist/hello-0.1.0.zip
 //	go run ./tools/mkrepo has    -index index.json -id hello -version 0.1.0   # 清单里已有这个版本时退出码 0，否则 1
-//	go run ./tools/mkrepo add    -index index.json -zip plugins/插件安装包/hello-0.1.0.zip -url https://…/hello-0.1.0.zip [-changelog 文本]
+//	go run ./tools/mkrepo add    -index index.json -zip dist/hello-0.1.0.zip -url https://…/hello-0.1.0.zip [-changelog 文本]
 //	go run ./tools/mkrepo sign   -index index.json                     # 用环境变量 NOVA_PLUGIN_SIGN_KEY（私钥 PEM）签名，写 index.json.sig
 //	go run ./tools/mkrepo verify -index index.json [-pub base64公钥]     # 验证签名（不填 -pub 时用 NOVA_PLUGIN_SIGN_KEY 的私钥求出公钥）
 package main
@@ -240,7 +240,7 @@ func cmdCheck(args []string) error {
 func cmdBuild(args []string) error {
 	fsx := flag.NewFlagSet("build", flag.ExitOnError)
 	dir := fsx.String("plugin", "", "插件目录")
-	out := fsx.String("out", filepath.Join("plugins", "插件安装包"), "输出目录")
+	out := fsx.String("out", "dist", "输出目录")
 	fsx.Parse(args)
 	m, mb, err := readManifest(*dir)
 	if err != nil {

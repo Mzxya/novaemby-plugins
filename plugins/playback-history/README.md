@@ -1,6 +1,6 @@
 # 历史播放记录 / 播放观测台
 
-NovaEmby 播放历史插件，当前版本 0.5.1。接收宿主事件并在 `/history` 提供手机优先的播放看板与历史查询页。
+NovaEmby 播放历史插件，当前版本 0.5.2。接收宿主事件并在 `/history` 提供手机优先的播放看板与历史查询页。
 
 ## 功能
 
@@ -42,9 +42,9 @@ go test -count=1 ./...
 go vet ./...
 node --check plugins/playback-history/assets/theme.js
 node --check plugins/playback-history/assets/app.js
-node tools/test-web.mjs
+node plugins/playback-history/web_test.mjs
 go run ./tools/mkrepo check -plugin plugins/playback-history
-go run ./tools/mkrepo build -plugin plugins/playback-history
+go run ./tools/mkrepo build -plugin plugins/playback-history -out plugins/插件安装包
 ```
 
 安装包输出至 `plugins/插件安装包/`，包含 Linux amd64 / arm64；资源通过 go:embed 编入程序，修改页面后必须重新构建。具备 C 编译器和 CGO 的环境可运行 `go test -race -count=1 ./...`。
