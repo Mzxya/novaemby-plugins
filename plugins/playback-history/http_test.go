@@ -1,75 +1,38 @@
 package main
 
 import (
-	"bytes"
-	"net/http"
+	"encoding/json"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Mzxya/novaemby-plugins/sdk"
 )
-
-func TestPageDirectListWithoutAuthenticationOrRedirect(t *testing.T) {
-	a := &application{store: openTestStore(t)}
-	handler := a.routes()["GET /history"]
-	resp := handler(nil, &sdk.Request{OriginalPath: "/history", Path: "/history"})
-	if resp.Status != http.StatusOK {
-		t.Fatalf("页面状态 = %d，应为 200 而非跳转", resp.Status)
-	}
-	body := string(resp.Body)
-	if !strings.Contains(body, `<base href="/history/">`) || !strings.Contains(body, `id="recordList"`) || strings.Contains(body, `id="authView"`) {
-		t.Fatalf("页面不是直接查询列表：%s", body[:min(len(body), 300)])
-	}
+func TestPagePrefixAndSameOriginPolicy(t *testing.T){
+	a:=&application{};routes:=a.routes()
+	for _,prefix:=range []string{"","/emby","/mediabrowser"}{resp:=routes["GET /history"](nil,&sdk.Request{Path:"/history",OriginalPath:prefix+"/history"});if resp.Status!=200||!strings.Contains(string(resp.Body),`<base href="`+prefix+`/history/">`){t.Fatal("页面丢失前缀",prefix)};if !strings.Contains(resp.Header.Get("Content-Security-Policy"),"frame-ancestors 'self'"){t.Fatal("未允许同源插件页面")}}
+	for _,name:=range []string{"app.js","core.mjs","theme.js","styles.css"}{resp:=routes["GET /history/"+name](nil,&sdk.Request{});if resp.Status!=200||len(resp.Body)==0{t.Fatal("静态资源缺失",name)}}
+	if resp:=routes["GET /history/overview"](nil,&sdk.Request{});resp.Status!=503{t.Fatal("未初始化时不应返回空成功结果")}
 }
-
-func TestRecordsAPIWithoutAuthentication(t *testing.T) {
-	s := openTestStore(t)
-	a := &application{store: s}
-	at := time.Date(2026, 11, 7, 10, 0, 0, 0, time.UTC)
-	rec := makeRecord("s1", "u1", "张三", "1", "公开查询", "Movie", at)
-	if _, _, err := s.Start(rec); err != nil {
-		t.Fatal(err)
-	}
-	req := &sdk.Request{Query: url.Values{"page": {"1"}, "pageSize": {"30"}}}
-	resp := a.routes()["GET /history/records"](nil, req)
-	if resp.Status != http.StatusOK || !bytes.Contains(resp.Body, []byte("公开查询")) {
-		t.Fatalf("免验证查询失败：%d %s", resp.Status, resp.Body)
-	}
+func TestPaginationClampsAfterDeletionAndTotalsUseAllFilteredRows(t *testing.T){
+	s:=testStore(t);base:=time.Now().UTC();for i:=0;i<25;i++{e:=event(base.Add(-time.Duration(i)*time.Minute),string(rune('A'+i)),"100");apply(t,s,"playback.started",e)}
+	a:=&application{store:s};r:=&sdk.Request{Query:url.Values{"page":{"999"}}};resp:=a.routes()["GET /history/records"](nil,r)
+	var data struct{Page int;Pages int;Total int;Rows []Record;Stats Totals};if err:=json.Unmarshal(resp.Body,&data);err!=nil{t.Fatal(err)}
+	if data.Page!=2||data.Pages!=2||data.Total!=25||len(data.Rows)!=5||data.Stats.Plays!=25{t.Fatalf("分页或全量统计错误: %+v",data)}
 }
-
-func TestParseQuery(t *testing.T) {
-	req := &sdk.Request{Query: url.Values{"from": {"2026-11-01"}, "to": {"2026-11-07"}, "status": {"completed"}, "page": {"2"}, "pageSize": {"50"}}}
-	q, err := parseQuery(req)
-	if err != nil || q.Page != 2 || q.PageSize != 50 || q.Status != "completed" || q.From.IsZero() || q.To.IsZero() {
-		t.Fatalf("查询参数解析不正确：%+v, %v", q, err)
-	}
-	if q, err := parseQuery(&sdk.Request{Query: url.Values{"sort": {"asc"}}}); err != nil || q.SortBy != "oldest" {
-		t.Fatalf("旧升序参数失效：%+v, %v", q, err)
-	}
-	if _, err := parseQuery(&sdk.Request{Query: url.Values{"page": {"0"}}}); err == nil {
-		t.Fatal("无效页码应返回错误")
-	}
+func TestManagementRequiresExplicitConfirmation(t *testing.T){
+	s:=testStore(t);apply(t,s,"playback.started",event(time.Now().UTC(),"s1","100"));a:=&application{store:s};handler:=a.routes()["POST /history/clear"]
+	for _,body:=range []string{`{}`,`{"confirm":false}`,`invalid`}{if handler(nil,&sdk.Request{Body:[]byte(body)}).Status!=400{t.Fatal("未确认的请求清空了记录")}}
+	rows,_,_:=s.Snapshot();if len(rows)!=1{t.Fatal("无效请求改变了记录")}
+	if handler(nil,&sdk.Request{Body:[]byte(`{"confirm":true,"user":"name:someone-else"}`)}).Status!=200{t.Fatal("空范围清理应该可重复执行")}
+	rows,_,_=s.Snapshot();if len(rows)!=1{t.Fatal("清理其他用户时误删记录")}
 }
-
-func TestThemeAssetAndDefaultLightPage(t *testing.T) {
-	a := &application{}
-	page := servePage(&sdk.Request{OriginalPath: "/emby/history"})
-	body := string(page.Body)
-	if !strings.Contains(body, `data-theme="light"`) || !strings.Contains(body, `id="themeButton"`) {
-		t.Fatal("页面缺少默认亮色主题或切换入口")
-	}
-	script, style := strings.Index(body, `<script src="./theme.js">`), strings.Index(body, `<link rel="stylesheet"`)
-	if script < 0 || style < 0 || script > style {
-		t.Fatal("主题初始化必须在样式表之前加载")
-	}
-	route := a.routes()["GET /history/theme.js"]
-	if route == nil {
-		t.Fatal("主题脚本未注册路由")
-	}
-	asset := route(nil, &sdk.Request{})
-	if asset.Status != http.StatusOK || !bytes.Contains(asset.Body, []byte("window.NovaTheme")) {
-		t.Fatal("主题脚本未嵌入安装程序")
-	}
+func TestManifestRoutesMatchImplementation(t *testing.T){
+	body,err:=os.ReadFile("manifest.json");if err!=nil{t.Fatal(err)}
+	var manifest struct{Routes []struct{Method string;Path string};Page struct{Path string}}
+	if err=json.Unmarshal(body,&manifest);err!=nil{t.Fatal(err)};routes:=(&application{}).routes()
+	for _,route:=range manifest.Routes{key:=route.Method+" "+route.Path;if routes[key]==nil{t.Fatal("manifest 路由未实现",key)}}
+	if len(routes)!=len(manifest.Routes)||routes["GET "+manifest.Page.Path]==nil{t.Fatal("实现路由与安装声明不一致")}
 }

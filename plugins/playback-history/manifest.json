@@ -1,9 +1,9 @@
 {
   "id": "playback-history",
   "name": "历史播放记录",
-  "version": "0.5.6",
+  "version": "1.0.0",
   "protocol": 1,
-  "description": "NovaEmby 播放看板，手机优先并兼容大屏：统一展示播放概况、观看趋势、未结束会话、用户排行、热门内容和内容分布。支持 7/30/90 天、按用户查看、全屏展示及独立播放明细查询。开启系统播放开始/停止通知后采集历史。",
+  "description": "全新播放历史：手机优先的观看概况、时间线、会话进度、用户与内容统计。支持官方媒体信息预览、本地封面、同源封面地址、宿主时区、定时清理与历史媒体信息修复。",
   "author": "NovaEmby 社区",
   "homepage": "/history",
   "page": {
@@ -42,12 +42,27 @@
     },
     {
       "method": "GET",
+      "path": "/history/theme.js",
+      "auth": "none"
+    },
+    {
+      "method": "GET",
       "path": "/history/styles.css",
       "auth": "none"
     },
     {
       "method": "GET",
-      "path": "/history/users",
+      "path": "/history/core.mjs",
+      "auth": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/history/bootstrap",
+      "auth": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/history/overview",
       "auth": "none"
     },
     {
@@ -57,7 +72,12 @@
     },
     {
       "method": "GET",
-      "path": "/history/items",
+      "path": "/history/media/{id}",
+      "auth": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/history/poster/{id}",
       "auth": "none"
     },
     {
@@ -68,16 +88,6 @@
     {
       "method": "POST",
       "path": "/history/clear",
-      "auth": "none"
-    },
-    {
-      "method": "GET",
-      "path": "/history/dashboard",
-      "auth": "none"
-    },
-    {
-      "method": "GET",
-      "path": "/history/theme.js",
       "auth": "none"
     }
   ],
@@ -131,14 +141,15 @@
       "max": 100
     },
     {
-      "key": "verboseEventLog",
-      "type": "bool",
-      "label": "完整事件诊断日志",
-      "description": "排查播放事件时开启逐条日志和原始 JSON 分片；默认关闭，日常仅记录开始/停止播放、插件启停和异常。",
-      "default": false
+      "key": "posterPathTemplate",
+      "type": "string",
+      "label": "宿主封面地址（可选）",
+      "description": "仅在已确认宿主图片接口时填写同源路径，必须包含 {id}，如由管理员提供的实际图片地址。留空只读取媒体旁的 poster.jpg、folder.jpg 等本地封面。不填 Token 或域名。",
+      "default": "",
+      "maxLength": 1000
     }
   ],
-  "memoryLimitMb": 128,
+  "memoryLimitMb": 256,
   "tasks": [
     {
       "key": "Cleanup",
@@ -151,6 +162,13 @@
           "time": "04:20"
         }
       ]
+    },
+    {
+      "key": "RepairMetadata",
+      "name": "修复历史媒体信息",
+      "description": "重新读取最近 2000 条历史的媒体名称、剧集及总时长，不修改媒体库。",
+      "defaultEnabled": false,
+      "defaultTriggers": []
     }
   ]
 }

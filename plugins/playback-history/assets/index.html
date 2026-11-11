@@ -4,61 +4,56 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#f4f4f5">
-  <title>播放记录 · NovaEmby</title>
+  <meta name="theme-color" content="#f7f8fc">
+  <title>播放历史 · NovaEmby</title>
   <script src="./theme.js"></script>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <header class="masthead">
-    <a class="brand" href="./" aria-label="播放记录首页"><span class="brand-mark" aria-hidden="true">N</span><span><strong>播放记录</strong><small>NovaEmby</small></span></a>
-    <nav class="view-tabs" aria-label="页面视图"><button id="boardTab" class="tab selected" type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>概况</span></button><button id="historyTab" class="tab" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5h12M9 12h12M9 19h12M3 5h1M3 12h1M3 19h1"/></svg><span>记录</span></button></nav>
-    <div class="masthead-right"><span id="connectionStatus" class="connection" role="status"><i></i><span>等待更新</span></span><div class="clock"><strong id="clockTime">--:--:--</strong><span id="clockDate">--</span></div><button id="themeButton" class="theme-button" type="button" aria-label="切换到暗色主题" aria-pressed="false" title="切换到暗色主题"><svg class="theme-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.3A8.5 8.5 0 0 1 9.7 4a8.5 8.5 0 1 0 10.3 10.3Z"/></svg><svg class="theme-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><span data-theme-label>暗色</span></button><a id="openWindowButton" class="icon-button" href="./" target="_blank" rel="noopener" hidden>独立打开</a><button id="fullscreenButton" class="icon-button" type="button" aria-label="全屏展示" title="全屏展示"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button></div>
-  </header>
-
-  <main class="shell">
-    <section class="page-heading">
-      <div><h1 id="pageTitle"><span class="desktop-title">播放概况</span><span class="mobile-title">概况</span></h1><p id="scopeCaption" class="subtitle">读取观看数据…</p></div>
-      <div class="scope-controls"><label><span class="sr-only">选择用户</span><select id="userSelect"><option value="">全部用户</option></select></label><div id="windowChips" class="segmented" role="group" aria-label="看板时间范围"><button type="button" data-days="7">7 天</button><button type="button" data-days="30" class="selected" aria-pressed="true">30 天</button><button type="button" data-days="90">90 天</button></div></div>
-    </section>
-    <div id="errorBanner" class="notice error hidden" role="alert"></div>
-    <div id="setupNotice" class="notice hidden">暂无播放数据。请在 NovaEmby 系统设置中开启「播放开始 / 停止通知」，播放视频后即可开始积累记录。</div>
-    <div id="loading" class="loading-line" role="status"><span>正在同步播放数据…</span></div>
-
-    <div id="boardView">
-      <section class="metrics" aria-label="观看概况">
-        <article class="metric"><div class="metric-label"><span>播放次数</span><span class="metric-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 11 7-11 7Z"/><path d="M4 5v14"/></svg></span></div><div class="metric-value"><strong id="statPlays">—</strong><span>次</span></div><p id="todayPlays">今日 — 次</p></article>
-        <article class="metric"><div class="metric-label"><span>播放时长</span><span class="metric-icon blue"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></span></div><div class="metric-value"><strong id="statHours">—</strong><span>小时</span></div><p id="todayHours">包含暂停时间</p></article>
-        <article class="metric"><div class="metric-label"><span>观看内容</span><span class="metric-icon purple"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 3v18M16 3v18M4 8h4m8 0h4M4 16h4m8 0h4"/></svg></span></div><div class="metric-value"><strong id="statItems">—</strong><span>部 / 集</span></div><p id="completedNote">已看完 — 次</p></article>
-        <article class="metric"><div class="metric-label"><span>未结束会话</span><span class="metric-icon amber"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="3"/><path d="M8 21h8m-4-4v4m-3-9h6"/></svg></span></div><div class="metric-value"><strong id="statActive">—</strong><span>个</span></div><p>当前所选用户 · 不限日期</p></article>
+  <a class="skip-link" href="#main">跳到内容</a>
+  <div class="app">
+    <header class="app-header">
+      <a class="brand" href="./" aria-label="播放历史首页"><span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7Z"/></svg></span><span>播放历史<small>NovaEmby</small></span></a>
+      <div class="header-actions"><span id="connection" class="connection" role="status">正在连接</span><button id="refresh" class="icon-button" type="button" aria-label="刷新数据" title="刷新数据"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1"/></svg></button><button id="theme" class="icon-button" type="button" aria-label="切换到暗色主题" aria-pressed="false" title="切换主题"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"/></svg></button><a id="standalone" class="icon-button" href="./" target="_blank" rel="noopener" aria-label="新窗口打开" title="新窗口打开" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6m0-6L10 14M10 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/></svg></a></div>
+    </header>
+    <main id="main" tabindex="-1">
+      <section class="page-intro"><div><p class="eyebrow">我的媒体生活</p><h1>你的观看足迹</h1><p id="scope" class="muted">记录每一次播放，回看最近的观看时光。</p></div><label class="user-control"><span>查看用户</span><select id="user"><option value="">全部用户</option></select></label></section>
+      <nav class="view-nav" aria-label="内容视图"><button id="overviewTab" class="nav-tab selected" data-screen="overview" type="button" aria-pressed="true">观看概况</button><button id="recordsTab" class="nav-tab" data-screen="records" type="button" aria-pressed="false">播放记录</button><span id="version" class="version"></span></nav>
+      <div id="error" class="notice error" role="alert" hidden><p id="errorText"></p><button id="retry" class="button" type="button">重试</button></div>
+      <div id="diagnostic" class="notice" hidden></div>
+      <div id="loading" class="loading" role="status"><span class="spinner"></span>正在读取播放历史…</div>
+      <section id="overviewView" aria-label="观看概况">
+        <div class="section-heading range-heading"><p id="rangeCaption" class="muted">最近 30 天</p><div id="range" class="segmented" role="group" aria-label="统计时间范围"><button type="button" data-days="7" aria-pressed="false">7 天</button><button type="button" data-days="30" class="selected" aria-pressed="true">30 天</button><button type="button" data-days="90" aria-pressed="false">90 天</button></div></div>
+        <div class="metrics" aria-label="统计指标">
+          <article class="metric"><span class="metric-label">播放次数</span><div><strong id="plays">—</strong><span>次</span></div><p id="todayPlays">等待数据</p></article>
+          <article class="metric"><span class="metric-label">会话时长</span><div><strong id="hours">—</strong><span>小时</span></div><p id="todayHours">包含暂停时间</p></article>
+          <article class="metric"><span class="metric-label">观看内容</span><div><strong id="contents">—</strong><span>部 / 集</span></div><p>同一内容合并统计</p></article>
+          <article class="metric"><span class="metric-label">已看完</span><div><strong id="completed">—</strong><span>次</span></div><p id="completionNote">按播放进度判定</p></article>
+        </div>
+        <div id="welcome" class="welcome" hidden><span class="welcome-icon" aria-hidden="true">▷</span><h2>从一次播放开始</h2><p>启用系统的播放开始、停止通知后，新的观看记录会出现在这里。</p><p class="muted">插件启用前或停机期间的播放不会补录。</p></div>
+        <section class="section"><div class="section-heading"><div><p class="eyebrow">最近的时光</p><h2>最近观看</h2></div><button id="allRecords" class="text-button" type="button">全部记录 <span aria-hidden="true">↗</span></button></div><div id="recent" class="recent-grid"></div></section>
+        <div class="analysis-grid">
+          <section class="panel trend-panel"><div class="section-heading"><div><h2>观看节奏</h2><p class="muted">按播放开始日期 · 会话小时</p></div><span id="trendTotal" class="small-stat"></span></div><div id="chart" class="trend-bars" role="group" aria-label="每天的观看时长，点击查看详情"></div><div class="chart-axis"><span id="chartFrom"></span><span id="chartTo"></span></div><div class="chart-detail"><label for="trendDate">查看日期</label><input id="trendDate" type="date"><output id="trendDetail" aria-live="polite">暂无数据</output></div></section>
+          <section class="panel"><div class="section-heading"><div><h2>观看偏好</h2><p class="muted">所选范围内的内容分布</p></div></div><div id="types" class="type-list"></div></section>
+          <section class="panel"><div class="section-heading"><div><h2>用户排行</h2><p class="muted">按累计会话时长</p></div></div><div id="ranking" class="ranking-list"></div></section>
+          <section class="panel"><div class="section-heading"><div><h2>反复回看</h2><p class="muted">按播放次数排序</p></div></div><div id="popular" class="popular-list"></div></section>
+        </div>
+        <section class="section"><div class="section-heading"><div><h2>未结束的会话 <span id="openCount" class="count-badge">0</span></h2><p class="muted">依据最新事件判断状态，未收到停止通知不代表仍在线。</p></div></div><div id="sessions" class="session-grid"></div></section>
       </section>
-
-      <section class="recent-strip"><div class="recent-heading"><div><h2>最近播放</h2></div><button id="moreHistory" class="text-button" type="button">查看全部明细 <span aria-hidden="true">↗</span></button></div><div id="recentList" class="recent-list"></div></section>
-
-      <section class="board-grid">
-        <article class="panel trend-panel"><div class="panel-heading"><div><h2>观看趋势</h2></div><span class="legend"><i></i>会话时长 / 小时</span></div><div id="trendChart" class="trend-chart" role="img" tabindex="0" aria-describedby="trendDetail" aria-label="每日观看时长趋势"></div><div class="trend-inspector"><label for="trendDate">查看日期</label><input id="trendDate" type="date"><output id="trendDetail" aria-live="polite"></output></div><div class="trend-footer"><span id="trendSummary">等待数据</span><span>按播放开始日期归属</span></div></article>
-        <article class="panel users-panel"><div class="panel-heading"><div><h2>用户排行</h2></div><span class="muted">时长 TOP 5</span></div><div id="userRanking" class="ranking-list"></div></article>
-        <article class="panel sessions-panel"><div class="panel-heading"><div><h2>未结束会话 <span id="sessionCount" class="count-badge">0</span></h2></div><span class="muted">最近 2 个</span></div><div id="activeList" class="session-list"></div><p class="panel-footnote">依据开始 / 停止事件；未收到停止通知的会话可能已离线。</p></article>
-        <article class="panel popular-panel"><div class="panel-heading"><div><h2>热门内容</h2></div><span class="muted">按播放次数</span></div><div id="popularList" class="popular-list"></div></article>
-        <article class="panel distribution-panel"><div class="panel-heading"><div><h2>观看分布</h2></div></div><div id="typeChart" class="type-chart"></div><div class="hour-heading"><h3>播放开始时段</h3><span class="muted">按次数</span></div><div id="hourChart" class="hour-chart" role="img" aria-label="24小时播放开始次数分布"></div><div class="hour-axis"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span></div></article>
+      <section id="recordsView" aria-label="播放记录" hidden>
+        <div class="records-toolbar"><div id="recordMode" class="segmented" role="group" aria-label="记录显示方式"><button type="button" data-mode="records" class="selected" aria-pressed="true">时间线</button><button type="button" data-mode="items" aria-pressed="false">按内容</button></div><div class="record-tools"><label class="manage"><input id="manage" type="checkbox">管理记录</label><button id="filterToggle" class="button" type="button" aria-expanded="false" aria-controls="filters">筛选 <span id="filterCount"></span></button></div></div>
+        <form id="filters" class="filters" hidden><label class="search-field">搜索<input id="search" type="search" placeholder="片名、用户、设备或客户端" maxlength="150"></label><label>类型<select id="kind"><option value="">全部内容</option><option value="Movie">电影</option><option value="Episode">剧集</option><option value="Other">其他</option></select></label><label>状态<select id="status"><option value="">全部状态</option><option value="completed">已看完</option><option value="incomplete">未看完</option><option value="open">未结束</option></select></label><label>开始日期<input id="from" type="date"></label><label>结束日期<input id="to" type="date"></label><div class="filter-actions"><button class="button primary" type="submit">应用筛选</button><button id="reset" class="button" type="button">清除</button></div></form>
+        <div class="list-heading"><p id="listSummary" class="muted">正在读取记录…</p><label class="sort-control"><span class="sr-only">排序</span><select id="sort"><option value="recent">最近播放</option><option value="oldest">最早播放</option><option value="duration">会话时长</option></select></label></div>
+        <div id="recordList" class="record-list"></div><div id="listEmpty" class="empty-state" hidden><h2>没有找到记录</h2><p>试试其他筛选条件，或播放一部内容后再回来。</p></div>
+        <div class="pagination"><button id="previous" class="button" type="button">上一页</button><span id="pageNumber">1 / 1</span><button id="next" class="button" type="button">下一页</button></div>
+        <div id="management" class="management" hidden><p>清空会移除所选用户的全部历史，不受日期和关键词筛选限制。</p><button id="clear" class="button danger" type="button">清空全部历史</button></div>
       </section>
-
-    </div>
-
-    <section id="historyView" class="history-view hidden" aria-labelledby="historyTitle">
-      <div class="panel history-panel">
-        <div class="panel-heading"><div><h2 id="historyTitle">播放明细</h2></div><label class="manage-toggle"><input id="manageMode" type="checkbox">管理记录</label></div>
-        <div class="history-toolbar"><div class="segmented" id="historyMode"><button type="button" data-mode="records" class="selected" aria-pressed="true">按记录</button><button type="button" data-mode="items">按内容汇总</button></div><label class="sort-label"><span>排序</span><select id="sortSelect" aria-label="排序方式"></select></label></div>
-        <details id="historyFilters" class="filter-drawer" open><summary>筛选与搜索<span id="filterCount">全部记录</span></summary>
-        <form id="filterForm" class="filters"><label class="search-field"><span>关键词</span><input id="searchInput" type="search" placeholder="搜索影片、剧集、设备…"></label><label><span>类型</span><select id="typeFilter"><option value="">全部类型</option><option value="Movie">电影</option><option value="Episode">剧集</option></select></label><label><span>状态</span><select id="statusFilter"><option value="">全部状态</option><option value="completed">已看完</option><option value="incomplete">未看完</option><option value="active">未结束会话</option></select></label><label class="date-field"><span>开始日期</span><input id="fromFilter" type="date"></label><label class="date-field"><span>结束日期</span><input id="toFilter" type="date"></label><div class="filter-actions"><button type="submit" class="button primary">查询</button><button id="resetFilters" type="button" class="button">重置</button></div></form>
-        </details>
-        <div id="historySummary" class="history-summary">等待查询</div><div id="recordList" class="record-list"></div><div id="emptyState" class="empty-state hidden"><strong>没有符合条件的记录</strong><p>调整筛选条件，或播放视频开始积累记录。</p></div>
-        <footer class="pagination"><div><button id="prevPage" class="button" type="button">上一页</button><span id="pageNumber">1 / 1</span><button id="nextPage" class="button" type="button">下一页</button></div><button id="clearButton" class="button danger hidden" type="button">清空所选用户全部记录</button></footer>
-      </div>
-    </section>
-    <footer class="site-footer"><span><i class="status-dot"></i><span id="lastUpdated">等待同步</span></span><span>数据保存在本机 · 时长包含暂停 · <span id="timeZoneNote">图表按服务器日期统计</span></span><label><input id="autoRefresh" type="checkbox" checked>60 秒自动更新</label></footer>
-  </main>
-  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-  <script src="./app.js" defer></script>
+      <div id="artworkNotice" class="artwork-notice" role="status" hidden>部分内容暂无可用封面。可在插件设置中填写已确认的宿主封面地址；记录和统计不受影响。</div>
+      <footer class="page-footer"><div><span id="updated">尚未同步</span><span id="zone">时区待确认</span></div><label><input id="autoRefresh" type="checkbox" checked>60 秒自动更新</label></footer>
+    </main>
+  </div>
+  <dialog id="detail" class="detail-dialog" aria-labelledby="detailTitle"><div class="detail-top"><span class="eyebrow">内容详情</span><button id="closeDetail" class="icon-button" type="button" aria-label="关闭详情">×</button></div><div id="detailContent"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="./app.js" type="module"></script>
 </body>
 </html>
