@@ -57,6 +57,19 @@
       "homepage": "/history",
       "versions": [
         {
+          "version": "1.0.2",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/jenley/novaemby-plugins/releases/download/playback-history-v1.0.2/playback-history-1.0.2.zip",
+          "sha256": "c7d355ecb128768fcbb77a4916c137b92a737bbc7c6dbf76de943db7635cafb6",
+          "size": 3680363,
+          "changelog": "- 根据用户提供的原始播放日志，新增 YINxkXn5Ll 事件结构的精确字段映射，正确读取用户、播放会话、设备、电影/剧集、媒体 ID、进度及总时长。\n- 兼容 playback.paused 同时承载暂停/恢复通知：有明确暂停字段时按其 true/false 更新；没有暂停字段的 progress 不再清除已暂停状态。\n- 在原文事件时间与 SDK 秒级时间一致时保留亚秒精度，用于同秒内的连续暂停/恢复和进度排序。\n- 保留旧字段映射与官方标准结构；不根据其他布尔值猜测“已看完”。跳播只更新进度，不把媒体位置当作实际观看时长。\n- 新增脱敏样本回放测试，覆盖两集剧集和一部电影的开始、暂停、恢复、进度、结束过程，校验只生成三条记录。",
+          "releasedAt": 1794411294
+        },
+        {
           "version": "1.0.1",
           "protocol": 1,
           "platforms": [
