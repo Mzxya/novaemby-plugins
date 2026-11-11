@@ -47,7 +47,7 @@ type Record struct {
 	DurationSeconds int64 `json:"durationSeconds"`
 }
 
-type EventData struct { Record; HasPosition bool; Finished bool; SkipNew bool }
+type EventData struct { Record; HasPosition bool; HasPaused bool; Finished bool; SkipNew bool }
 
 func userKey(id, name string) string {
 	if name = strings.TrimSpace(name); name != "" { return "name:" + strings.ToLower(name) }
@@ -87,18 +87,11 @@ func decodePlayback(raw []byte, at time.Time) (EventData,error) {
 	var root map[string]any
 	if err := decoder.Decode(&root); err != nil { return EventData{},err }
 	s := object(root["Session"])
-	mapped := false
-	if s==nil { s=object(root["UQVNVII2"]); mapped=s!=nil }
-	if s==nil { return EventData{},errors.New("未识别的播放事件结构") }
 	var e EventData
-	if mapped {
-		e.SessionID = first(text(s["Sk2P5N"]),text(s["Lp_fY7Tvs7"]))
-		e.UserID=text(s["EUebnB"]); e.UserName=text(s["FQBAcs2Ewxg"])
-		e.ItemID=first(text(s["V3S9zRa"]),text(s["P0aX1v"]))
-		e.ItemName=text(root["VE9xvSKkbW4R"]);e.ItemType=text(root["XaNoaNs"])
-		e.DeviceName=text(s["VapVfGw8id"]);e.DeviceID=text(s["Ma1NLTTGgLkj"]);e.Client=text(s["ZgySkQw"])
-		e.PositionTicks=integer(s["AEKpVZufJ"]); _,e.HasPosition=s["AEKpVZufJ"]
-		e.RuntimeTicks=integer(s["Hq1fULgr1q"]);e.Paused=boolean(s["VUWeWNJXBmau"])
+	if s==nil {
+		var ok bool
+		e,at,ok=decodeObservedMapping(root,at)
+		if !ok { return EventData{},errors.New("未识别的播放事件结构") }
 	} else {
 		e.SessionID=text(pick(s,"PlaySessionID","PlaySessionId","SessionID","SessionId","ID","Id"))
 		e.UserID=text(pick(s,"UserID","UserId"));e.UserName=text(s["UserName"])
@@ -108,7 +101,7 @@ func decodePlayback(raw []byte, at time.Time) (EventData,error) {
 		e.PlayMethod=text(s["PlayMethod"])
 		e.PositionTicks=integer(s["PositionTicks"]);_,e.HasPosition=s["PositionTicks"]
 		e.RuntimeTicks=integer(s["RuntimeTicks"]);if e.RuntimeTicks==0 { e.RuntimeTicks=integer(root["RuntimeTicks"]) }
-		e.Paused=boolean(s["IsPaused"]);e.Finished=boolean(root["PlayedToCompletion"])||boolean(s["PlayedToCompletion"])
+		e.Paused,e.HasPaused=s["IsPaused"].(bool);e.Finished=boolean(root["PlayedToCompletion"])||boolean(s["PlayedToCompletion"])
 	}
 	if e.SessionID=="" && (e.ItemID=="" || (e.UserID=="" && e.UserName=="")) { return e,errors.New("播放事件缺少可关联的会话标识") }
 	if at.IsZero() { at=time.Now() }; e.StartedAt=at.UTC();e.LastEventAt=at.UTC()

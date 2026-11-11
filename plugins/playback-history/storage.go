@@ -125,8 +125,10 @@ func (s *Store) Apply(kind string,e EventData,completion int) (string,bool,error
 	if r.ItemID==""&&e.ItemID!=""{r.ItemID=e.ItemID;r.EventItemID=e.ItemID}
 	r=merge(r,e)
 	switch kind {
-	case "playback.paused":r.Paused=true
-	case "playback.progress":r.Paused=e.Paused
+	case "playback.paused":
+		if e.HasPaused {r.Paused=e.Paused}else{r.Paused=true}
+	case "playback.progress":
+		if e.HasPaused {r.Paused=e.Paused}
 	case "playback.started":r.Paused=false
 	case "playback.stopped":
 		end:=e.LastEventAt;r.EndedAt=&end;r.Paused=false
