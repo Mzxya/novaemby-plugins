@@ -212,3 +212,34 @@ test("内嵌框禁止全屏时隐藏入口，仍可查询看板和切换主题",
   p.elements.get("themeButton").listeners.get("click")();
   assert.equal(p.document.documentElement.dataset.theme,"dark");
 });
+
+test("看板和明细时间按宿主时区显示，非法时区不会中断加载",async()=>{
+  const data=board();data.timeZone="Asia/Shanghai";
+  data.recent=[{itemName:"跨日影片",userName:"Alice",startedAt:"2026-11-11T16:15:00Z"}];
+  const p=page(async url=>response(url.endsWith("/users")?users:data));
+  await p.run("init()");
+  assert.equal(p.run("state.timeZone"),"Asia/Shanghai");
+  assert.match(p.elements.get("timeZoneNote").textContent,/Asia\/Shanghai/);
+  const expected=new Date("2026-11-11T16:15:00Z").toLocaleString("zh-CN",{timeZone:"Asia/Shanghai",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+  assert.equal(p.run('localTime("2026-11-11T16:15:00Z")'),expected);
+  assert.ok(p.elements.get("recentList").innerHTML.includes(expected));
+  await p.run('state.screen="history";loadData()');
+  assert.equal(p.run("state.timeZone"),"Asia/Shanghai");
+  assert.doesNotThrow(()=>p.run('setTimeZone("Invalid/TimeZone")'));
+  assert.equal(p.run("state.timeZone"),"");
+  assert.match(p.elements.get("timeZoneNote").textContent,/浏览器/);
+});
+
+test("持续进度更新恢复会话活跃提示并刷新进度条",async()=>{
+  const data=board();
+  data.active=[{id:"r1",userName:"Alice",itemName:"测试影片",startedAt:"2026-11-08T10:00:00Z",lastEventAt:"2026-11-08T11:00:00Z",positionTicks:10,runtimeTicks:100,durationSeconds:7200}];
+  data.activeTotal=1;
+  const p=page(async url=>response(url.endsWith("/users")?users:data));
+  await p.run("loadData()");
+  assert.match(p.elements.get("activeList").innerHTML,/超过 15 分钟无事件/);
+  data.active[0].lastEventAt=data.at;data.active[0].positionTicks=65;
+  await p.run("loadData()");
+  assert.ok(!p.elements.get("activeList").innerHTML.includes("超过 15 分钟无事件"));
+  assert.match(p.elements.get("activeList").innerHTML,/最后事件/);
+  assert.match(p.elements.get("activeList").innerHTML,/data-width="65"/);
+});

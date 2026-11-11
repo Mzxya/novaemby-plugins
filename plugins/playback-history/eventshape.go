@@ -67,13 +67,17 @@ func parsePlaybackEvent(data []byte) parsedEvent {
 	var doc playbackEvent
 	if err := json.Unmarshal(data, &doc); err == nil {
 		name := strings.TrimSpace(doc.Session.UserName)
-		if name != "" || doc.itemID() != "" {
+		if name != "" || doc.itemID() != "" || doc.sessionID() != "" {
+			runtime := doc.Session.RuntimeTicks
+			if runtime <= 0 {
+				runtime = doc.RuntimeTicks
+			}
 			return parsedEvent{
 				Source: "doc", SessionID: doc.sessionID(), UserID: doc.Session.UserID.String(),
 				UserName: name, ItemID: doc.itemID(), ItemName: strings.TrimSpace(doc.ItemName),
 				ItemType: doc.ItemType, DeviceName: doc.Session.DeviceName, Client: doc.Session.Client,
 				PlayMethod: doc.Session.PlayMethod, RemoteAddr: doc.Session.RemoteAddr,
-				PositionTicks: doc.Session.PositionTicks, PlayedToCompletion: doc.completed(),
+				PositionTicks: doc.Session.PositionTicks, RuntimeTicks: runtime, PlayedToCompletion: doc.completed(),
 			}
 		}
 	}

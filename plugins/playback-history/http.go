@@ -90,7 +90,7 @@ func jsonError(status int, message string) *sdk.Response {
 	return sdk.JSON(status, map[string]string{"error": message})
 }
 
-func parseQuery(r *sdk.Request) (Query, error) {
+func parseQuery(r *sdk.Request, locations ...*time.Location) (Query, error) {
 	q := Query{
 		UserKey: strings.TrimSpace(r.Query.Get("user")), Search: strings.TrimSpace(r.Query.Get("q")),
 		ItemType: strings.TrimSpace(r.Query.Get("type")), Status: strings.TrimSpace(r.Query.Get("status")),
@@ -126,11 +126,11 @@ func parseQuery(r *sdk.Request) (Query, error) {
 	default:
 		return q, fmt.Errorf("status 只支持 all、completed、incomplete、active")
 	}
-	q.From, err = parseTime(r.Query.Get("from"), false)
+	q.From, err = parseTime(r.Query.Get("from"), false, locations...)
 	if err != nil {
 		return q, fmt.Errorf("from 日期格式不正确")
 	}
-	q.To, err = parseTime(r.Query.Get("to"), true)
+	q.To, err = parseTime(r.Query.Get("to"), true, locations...)
 	if err != nil {
 		return q, fmt.Errorf("to 日期格式不正确")
 	}
@@ -140,18 +140,22 @@ func parseQuery(r *sdk.Request) (Query, error) {
 	return q, nil
 }
 
-func parseTime(raw string, endOfDay bool) (time.Time, error) {
+func parseTime(raw string, endOfDay bool, locations ...*time.Location) (time.Time, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return time.Time{}, nil
 	}
 	if len(raw) == len("2006-01-02") {
-		t, err := time.ParseInLocation("2006-01-02", raw, time.Local)
+		location := time.Local
+		if len(locations) > 0 && locations[0] != nil {
+			location = locations[0]
+		}
+		t, err := time.ParseInLocation("2006-01-02", raw, location)
 		if err != nil {
 			return time.Time{}, err
 		}
 		if endOfDay {
-			t = t.Add(24*time.Hour - time.Nanosecond)
+			t = t.AddDate(0, 0, 1).Add(-time.Nanosecond)
 		}
 		return t, nil
 	}
@@ -167,7 +171,7 @@ func (a *application) handleUsers(_ *sdk.Host, _ *sdk.Request) *sdk.Response {
 }
 
 func (a *application) handleRecords(_ *sdk.Host, r *sdk.Request) *sdk.Response {
-	q, err := parseQuery(r)
+	q, err := parseQuery(r, a.store.Location())
 	if err != nil {
 		return jsonError(http.StatusBadRequest, err.Error())
 	}
@@ -176,7 +180,7 @@ func (a *application) handleRecords(_ *sdk.Host, r *sdk.Request) *sdk.Response {
 
 // handleItems 返回「按内容汇总」视图：同一部影片/剧集单集的多次播放合并为一行。
 func (a *application) handleItems(_ *sdk.Host, r *sdk.Request) *sdk.Response {
-	q, err := parseQuery(r)
+	q, err := parseQuery(r, a.store.Location())
 	if err != nil {
 		return jsonError(http.StatusBadRequest, err.Error())
 	}
@@ -209,7 +213,7 @@ func (a *application) handleClear(_ *sdk.Host, r *sdk.Request) *sdk.Response {
 	if !body.Confirm {
 		return jsonError(http.StatusBadRequest, "清理记录需要 confirm=true 确认")
 	}
-	before, err := parseTime(body.Before, true)
+	before, err := parseTime(body.Before, true, a.store.Location())
 	if err != nil {
 		return jsonError(http.StatusBadRequest, "before 日期格式不正确")
 	}

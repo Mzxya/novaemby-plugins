@@ -165,6 +165,7 @@ type playbackEvent struct {
 		Client             string     `json:"Client"`
 		ItemID             FlexibleID `json:"ItemID"`
 		PositionTicks      int64      `json:"PositionTicks"`
+		RuntimeTicks       int64      `json:"RuntimeTicks"`
 		PlayMethod         string     `json:"PlayMethod"`
 		RemoteAddr         string     `json:"RemoteAddr"`
 		PlayedToCompletion bool       `json:"PlayedToCompletion"`
@@ -172,6 +173,7 @@ type playbackEvent struct {
 	ItemID             FlexibleID `json:"ItemID"`
 	ItemType           string     `json:"ItemType"`
 	ItemName           string     `json:"ItemName"`
+	RuntimeTicks       int64      `json:"RuntimeTicks"`
 	PlayedToCompletion bool       `json:"PlayedToCompletion"`
 }
 

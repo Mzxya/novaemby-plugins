@@ -2,7 +2,7 @@
 const BASE = location.pathname.replace(/\/index\.html$/, "").replace(/\/$/, "");
 const $ = (id) => document.getElementById(id);
 const state = {screen:"board",user:"",users:[],days:30,mode:"records",sort:"recent",page:1,pages:0,total:0,
-  filters:{q:"",type:"",status:"",from:"",to:""},mobile:null,trendDate:"",request:null,timer:null,board:null};
+  filters:{q:"",type:"",status:"",from:"",to:""},mobile:null,trendDate:"",request:null,timer:null,board:null,timeZone:""};
 const COLORS = {Movie:"var(--accent)",Episode:"var(--blue)",Other:"var(--purple)"};
 const SORTS = {records:[["recent","最近播放"],["oldest","最早播放"],["duration","单次时长"]],items:[["count","播放次数"],["duration","累计时长"],["recent","最近播放"]]};
 const esc = (value) => String(value ?? "").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
@@ -10,7 +10,13 @@ const number = value => Number.isFinite(Number(value))?Math.max(0,Number(value))
 const count = value => number(value).toLocaleString("zh-CN");
 const hours = value => (number(value)/3600).toLocaleString("zh-CN",{maximumFractionDigits:1});
 function duration(value) {const s=number(value),h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}小时${m}分`:m?`${m}分钟`:`${Math.floor(s)}秒`;}
-function localTime(raw) {return raw?new Date(raw).toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";}
+function timeOptions(options) {return state.timeZone?{...options,timeZone:state.timeZone}:options;}
+function localTime(raw) {return raw?new Date(raw).toLocaleString("zh-CN",timeOptions({month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})):"—";}
+function setTimeZone(name) {
+  try{if(typeof name!=="string"||!name)throw new Error("missing time zone");new Intl.DateTimeFormat("zh-CN",{timeZone:name});state.timeZone=name;}catch(_){state.timeZone="";}
+  $("timeZoneNote").textContent=state.timeZone?`按 ${state.timeZone} 统计与显示` : "按服务器日期统计 · 时间按浏览器显示";
+  updateClock();
+}
 function userName() {return state.users.find(u=>u.key===state.user)?.name || (state.user?"所选用户":"全部用户");}
 function setConnection(kind,text) {$("connectionStatus").className=`connection ${kind}`;$("connectionStatus").querySelector("span").textContent=text;}
 function csrfToken() {
@@ -46,11 +52,11 @@ async function loadData(showSpinner=true) {
     if(results[0].status==="rejected")throw results[0].reason;
     if(results[1].status==="fulfilled") {state.users=results[1].value.users||[];renderUserSelect();}
     const data=results[0].value;
-    if(screen==="board") {state.board=data;renderDashboard(data);}
+    if(screen==="board") {state.board=data;setTimeZone(data.timeZone);renderDashboard(data);}
     else renderHistory(data);
     if(results[1].status==="rejected") {$("errorBanner").textContent="用户列表暂时读取失败，已保留当前选择。";$("errorBanner").classList.remove("hidden");}
     $("setupNotice").classList.toggle("hidden",screen!=="board"||data.stats?.totalPlayCount>0||state.user!==""||state.users.some(u=>u.playCount>0));
-    $("lastUpdated").textContent="最近同步 "+new Date().toLocaleTimeString("zh-CN");
+    $("lastUpdated").textContent="最近同步 "+new Date().toLocaleTimeString("zh-CN",timeOptions({}));
     setConnection("online","数据已同步");
   } catch(error) {
     if(state.request!==request)return;
@@ -229,7 +235,7 @@ async function clearRecords() {
   try{const result=await api("/clear",{method:"POST",body:JSON.stringify({userKey:user,confirm:true})});toast(`已清理 ${result.removed} 条记录`);state.page=1;await loadData(false);}catch(error){toast(error.message);}
 }
 function updateAutoRefresh() {clearInterval(state.timer);state.timer=null;if($("autoRefresh").checked)state.timer=setInterval(()=>{if(!document.hidden)loadData(false);},60000);}
-function updateClock() {const now=new Date();$("clockTime").textContent=now.toLocaleTimeString("zh-CN",{hour12:false});$("clockDate").textContent=now.toLocaleDateString("zh-CN",{year:"numeric",month:"2-digit",day:"2-digit",weekday:"short"});}
+function updateClock() {const now=new Date();$("clockTime").textContent=now.toLocaleTimeString("zh-CN",timeOptions({hour12:false}));$("clockDate").textContent=now.toLocaleDateString("zh-CN",timeOptions({year:"numeric",month:"2-digit",day:"2-digit",weekday:"short"}));}
 function bindEvents() {
   $("recentList").addEventListener("click", event => {
     const card = event.target.closest("[data-history-query]");

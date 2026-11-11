@@ -32,7 +32,10 @@ type Store struct {
 	records map[string]*PlaybackRecord
 	open    map[string]string
 	users   map[string]KnownUser
-	now     func() time.Time
+	now      func() time.Time
+	location *time.Location
+	// 进度仅更新现有会话；记录第一次未持久化更新的时间，最多每 30 秒追加一次。
+	progressPending map[string]time.Time
 	// 写盘节流状态（均受 mu 保护）：lastSync 为上次 fsync 时间，dirty 表示有未落盘增量。
 	lastSync time.Time
 	dirty    bool
@@ -194,6 +197,11 @@ func (s *Store) appendLocked(op diskOperation) error {
 	if _, err := s.file.Write(b); err != nil {
 		return err
 	}
+	if op.Record != nil {
+		delete(s.progressPending, op.Record.ID)
+	} else if op.Op == "delete" {
+		delete(s.progressPending, op.ID)
+	}
 	s.dirty = true
 	now := s.now()
 	if s.lastSync.IsZero() || now.Sub(s.lastSync) >= syncInterval {
@@ -314,6 +322,72 @@ func (s *Store) Pause(rec PlaybackRecord) (string, error) {
 	}
 	s.records[id] = cp
 	return id, nil
+}
+
+const progressWriteInterval = 30 * time.Second
+
+func (s *Store) FlushProgress() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.file == nil {
+		return os.ErrClosed
+	}
+	now := s.now()
+	for id, first := range s.progressPending {
+		if now.Sub(first) < progressWriteInterval {
+			continue
+		}
+		if rec := s.records[id]; rec != nil {
+			if err := s.appendLocked(diskOperation{Op: "put", Record: rec}); err != nil {
+				return err
+			}
+		} else {
+			delete(s.progressPending, id)
+		}
+	}
+	return nil
+}
+
+// Progress 不创建播放记录，也不按其他设备的用户/条目兜底合并。
+// 内存每次更新，JSONL 每个会话最多每 30 秒追加一次；停止、重写和关闭会保存最新值。
+func (s *Store) Progress(rec PlaybackRecord) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.file == nil {
+		return os.ErrClosed
+	}
+	if rec.SessionID == "" && (rec.ItemID == "" || (rec.UserID == "" && rec.UserName == "")) {
+		return nil
+	}
+	id := s.open[openKey(&rec)]
+	current := s.records[id]
+	if current == nil || current.EndedAt != nil || !rec.LastEventAt.After(current.LastEventAt) {
+		return nil
+	}
+	if rec.ItemID != "" && current.ItemID != "" && rec.ItemID != current.ItemID {
+		return nil // 同一设备已经切换到另一条目时，忽略旧条目的迟到上报。
+	}
+	cp := cloneRecord(current)
+	cp.PositionTicks = max(0, rec.PositionTicks)
+	cp.LastEventAt = rec.LastEventAt.UTC()
+	if rec.RuntimeTicks > 0 {
+		cp.RuntimeTicks = rec.RuntimeTicks
+	}
+	cp.updateDuration(s.now())
+	if s.progressPending == nil {
+		s.progressPending = map[string]time.Time{}
+	}
+	now := s.now()
+	first, pending := s.progressPending[id]
+	if pending && now.Sub(first) >= progressWriteInterval {
+		if err := s.appendLocked(diskOperation{Op: "put", Record: cp}); err != nil {
+			return err
+		}
+	} else if !pending {
+		s.progressPending[id] = now
+	}
+	s.records[id] = cp
+	return nil
 }
 
 func (s *Store) Stop(rec PlaybackRecord, completionPercent int) (string, error) {
@@ -785,7 +859,7 @@ func (s *Store) Cleanup(retentionDays, maxRecords int) (int, error) {
 	defer s.mu.Unlock()
 	remove := map[string]bool{}
 	if retentionDays > 0 {
-		cutoff := s.now().AddDate(0, 0, -retentionDays)
+		cutoff := s.now().In(s.locationLocked()).AddDate(0, 0, -retentionDays)
 		for id, rec := range s.records {
 			if rec.StartedAt.Before(cutoff) {
 				remove[id] = true
@@ -876,6 +950,7 @@ func (s *Store) rewriteLocked() error {
 	s.file = f
 	s.lastSync = time.Time{}
 	s.dirty = false
+	clear(s.progressPending)
 	ok = true
 	return nil
 }
@@ -886,11 +961,22 @@ func (s *Store) Close() error {
 	if s.file == nil {
 		return nil
 	}
-	_ = s.forceSyncLocked() // 停机前把未落盘的增量写下去，尽力而为
+	var flushErr error
+	for id := range s.progressPending {
+		if rec := s.records[id]; rec != nil {
+			if err := s.appendLocked(diskOperation{Op: "put", Record: rec}); err != nil {
+				flushErr = err
+				break
+			}
+		}
+	}
+	if err := s.forceSyncLocked(); err != nil && flushErr == nil {
+		flushErr = err
+	}
 	err := s.file.Close()
 	s.file = nil
 	if err != nil && !errors.Is(err, os.ErrClosed) {
 		return err
 	}
-	return nil
+	return flushErr
 }

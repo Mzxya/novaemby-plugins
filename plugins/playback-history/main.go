@@ -88,10 +88,29 @@ func main() {
 				return fmt.Errorf("打开播放历史数据：%w", err)
 			}
 			a.store = st
+			if err := st.SetTimeZone(h.TimeZone()); err != nil {
+				h.Warn("宿主时区无效，使用容器本地时区", "timeZone", h.TimeZone(), "error", err.Error())
+			}
 			a.enrichJobs = make(chan string, 256)
 			a.ctx, a.cancel = context.WithCancel(context.Background())
 			a.wg.Add(1)
 			go a.enrichWorker(h)
+			a.wg.Add(1)
+			go func() {
+				defer a.wg.Done()
+				ticker := time.NewTicker(5 * time.Second)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-a.ctx.Done():
+						return
+					case <-ticker.C:
+						if err := st.FlushProgress(); err != nil {
+							h.Warn("保存播放进度失败", "error", err.Error())
+						}
+					}
+				}
+			}()
 			removed, err := st.Cleanup(int(configInt(h.Config(), "retentionDays", defaultRetentionDays)), int(configInt(h.Config(), "maxRecords", defaultMaxRecords)))
 			if err != nil {
 				h.Warn("启动时清理历史记录失败", "error", err.Error())
@@ -158,6 +177,22 @@ func main() {
 }
 
 func (a *application) handleEvent(h *sdk.Host, ev sdk.Event) {
+	// 高频进度直接合并现有会话，不打印逐条日志、不重复请求条目信息。
+	if ev.Name == "playback.progress" {
+		if a.store == nil {
+			return
+		}
+		p := parsePlaybackEvent(ev.Data)
+		err := a.store.Progress(PlaybackRecord{
+			SessionID: p.SessionID, UserID: p.UserID, UserName: p.UserName,
+			ItemID: p.ItemID, PositionTicks: p.PositionTicks, RuntimeTicks: p.RuntimeTicks,
+			LastEventAt: eventTime(ev),
+		})
+		if err != nil && h != nil {
+			h.Warn("保存播放进度失败", "error", err.Error())
+		}
+		return
+	}
 	// 逐条运行日志默认关闭，只在诊断开关打开时输出；异常日志始终保留。
 	verbose := configBool(h.Config(), "verboseEventLog", defaultVerboseEventLog)
 

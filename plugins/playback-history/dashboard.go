@@ -9,6 +9,7 @@ import (
 // DashboardResult 是在同一把读锁、同一个时刻生成的看板快照。
 type DashboardResult struct {
 	At          time.Time        `json:"at"`
+	TimeZone    string           `json:"timeZone"`
 	From        string           `json:"from"`
 	To          string           `json:"to"`
 	Days        int              `json:"days"`
@@ -59,10 +60,12 @@ func (s *Store) Dashboard(user string, days int) DashboardResult {
 	if days > 90 {
 		days = 90
 	}
-	now := s.now().Local()
+	location := s.locationLocked()
+	now := s.now().In(location)
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	start := today.AddDate(0, 0, -(days - 1))
 	result := DashboardResult{At: now, From: start.Format("2006-01-02"), To: today.Format("2006-01-02"), Days: days,
+		TimeZone: location.String(),
 		Active: []PlaybackRecord{}, Recent: []PlaybackRecord{}, Users: []UserSummary{}, Popular: []ItemSummary{},
 		Daily: make([]DailyBucket, days), Hours: make([]HourBucket, 24), Types: []TypeBucket{}}
 	dateIndex := map[string]int{}
@@ -89,7 +92,7 @@ func (s *Store) Dashboard(user string, days int) DashboardResult {
 			result.ActiveTotal++
 			active = pushLatest(active, rec, 4)
 		}
-		day, ok := dateIndex[rec.StartedAt.Local().Format("2006-01-02")]
+		day, ok := dateIndex[rec.StartedAt.In(location).Format("2006-01-02")]
 		if !ok {
 			continue
 		}
@@ -120,7 +123,7 @@ func (s *Store) Dashboard(user string, days int) DashboardResult {
 		}
 		result.Daily[day].PlayCount++
 		result.Daily[day].WatchSeconds += secs
-		hour := rec.StartedAt.Local().Hour()
+		hour := rec.StartedAt.In(location).Hour()
 		result.Hours[hour].PlayCount++
 		result.Hours[hour].WatchSeconds += secs
 		kind := rec.ItemType
