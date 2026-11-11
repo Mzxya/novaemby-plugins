@@ -22,6 +22,7 @@ type application struct {
 	queuedMu sync.Mutex
 	queued map[string]bool
 	unsupported atomic.Uint64
+	rawEvents atomic.Uint64
 	server string
 	version string
 }
@@ -56,6 +57,9 @@ func main() {
 	})
 }
 func (a *application) event(h *sdk.Host,e sdk.Event) {
+	if cfgBool(h.Config(),"verboseEventLog",false) {
+		logRawEvent(e,a.rawEvents.Add(1),h.Info)
+	}
 	if a.store==nil{return}
 	if strings.HasPrefix(e.Name,"user.") {
 		var raw struct{UserID any;UserName string};if e.Decode(&raw)!=nil{return}

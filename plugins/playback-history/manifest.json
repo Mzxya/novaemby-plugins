@@ -1,7 +1,7 @@
 {
   "id": "playback-history",
   "name": "历史播放记录",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "protocol": 1,
   "description": "全新播放历史：手机优先的观看概况、时间线、会话进度、用户与内容统计。支持官方媒体信息预览、本地封面、同源封面地址、宿主时区、定时清理与历史媒体信息修复。",
   "author": "NovaEmby 社区",
@@ -147,6 +147,13 @@
       "description": "仅在已确认宿主图片接口时填写同源路径，必须包含 {id}，如由管理员提供的实际图片地址。留空只读取媒体旁的 poster.jpg、folder.jpg 等本地封面。不填 Token 或域名。",
       "default": "",
       "maxLength": 1000
+    },
+    {
+      "key": "verboseEventLog",
+      "type": "bool",
+      "label": "原始事件诊断日志",
+      "description": "排查事件无法识别时开启，在插件日志中显示收到的事件名称和原始 JSON（含进度事件），长数据按 diagnosticId 和 part 分段。默认关闭，保存配置后对后续事件生效；收集反馈后请关闭。单条超过 131072 字符会标记截断。",
+      "default": false
     }
   ],
   "memoryLimitMb": 256,
