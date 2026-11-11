@@ -9,6 +9,56 @@ const esc = (value) => String(value ?? "").replace(/[&<>'"]/g,c=>({"&":"&amp;","
 const number = value => Number.isFinite(Number(value))?Math.max(0,Number(value)):0;
 const count = value => number(value).toLocaleString("zh-CN");
 const hours = value => (number(value)/3600).toLocaleString("zh-CN",{maximumFractionDigits:1});
+function setupEmbeddedLayout() {
+  if(window.self===window.top)return;
+  document.documentElement.dataset.embedded="true";
+  $("openWindowButton").hidden=false;
+  let frame;
+  try{frame=window.frameElement;}catch(_){return;}
+  if(!frame)return;
+  // 只调整当前页面的同源 iframe，不改宿主其他布局。
+  const properties=["height","min-height","max-height","width","display","flex-shrink"];
+  const saved=properties.map(name=>[name,frame.style.getPropertyValue(name),frame.style.getPropertyPriority(name)]);
+  let active=true,queued=false;
+  function resize() {
+    queued=false;
+    if(!active||document.fullscreenElement)return;
+    // 使用 body 自然高度，避免旧 iframe 的 scrollHeight 导致只增不减。
+    const height=Math.ceil(document.body.getBoundingClientRect().height);
+    if(!Number.isFinite(height)||height<=0)return;
+    frame.style.setProperty("height",`${height}px`,"important");
+    frame.style.setProperty("min-height","0","important");
+    frame.style.setProperty("max-height","none","important");
+    frame.style.setProperty("width","100%");
+    frame.style.setProperty("display","block");
+    frame.style.setProperty("flex-shrink","0");
+  }
+  function schedule() {
+    if(queued||!active)return;
+    queued=true;
+    if(window.requestAnimationFrame)window.requestAnimationFrame(resize);else setTimeout(resize,0);
+  }
+  const observer=typeof ResizeObserver!=="undefined"?new ResizeObserver(schedule):null;
+  observer?.observe(document.body);
+  window.addEventListener("resize",schedule);
+  document.addEventListener("load",schedule,true);
+  document.addEventListener("toggle",schedule,true);
+  document.addEventListener("fullscreenchange",schedule);
+  function cleanup() {
+    active=false;observer?.disconnect();
+    window.removeEventListener("resize",schedule);
+    document.removeEventListener("load",schedule,true);
+    document.removeEventListener("toggle",schedule,true);
+    document.removeEventListener("fullscreenchange",schedule);
+    for(const [name,value,priority] of saved) {
+      if(value)frame.style.setProperty(name,value,priority);else frame.style.removeProperty(name);
+    }
+    window.removeEventListener("pagehide",cleanup);
+  }
+  window.addEventListener("pagehide",cleanup);
+  window.NovaEmbed={refresh:schedule,scrollTop:()=>frame.scrollIntoView?.({block:"start",behavior:"auto"})};
+  schedule();
+}
 function duration(value) {const s=number(value),h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}小时${m}分`:m?`${m}分钟`:`${Math.floor(s)}秒`;}
 function timeOptions(options) {return state.timeZone?{...options,timeZone:state.timeZone}:options;}
 function localTime(raw) {return raw?new Date(raw).toLocaleString("zh-CN",timeOptions({month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})):"—";}
@@ -62,7 +112,7 @@ async function loadData(showSpinner=true) {
     if(state.request!==request)return;
     $("errorBanner").textContent=(error.name==="AbortError"?"同步超时":error.message)+"；保留上次成功数据，下一次自动更新时重试。";
     $("errorBanner").classList.remove("hidden");setConnection("offline","同步中断");
-  } finally {clearTimeout(timeout);if(state.request===request){state.request=null;$("loading").classList.add("hidden");}}
+  } finally {clearTimeout(timeout);if(state.request===request){state.request=null;$("loading").classList.add("hidden");window.NovaEmbed?.refresh();}}
 }
 function renderUserSelect() {
   $("userSelect").innerHTML='<option value="">全部用户</option>'+state.users.map(u=>`<option value="${esc(u.key)}">${esc(u.name||"未知用户")}${u.deleted?"（已删除）":""}</option>`).join("");
@@ -219,7 +269,7 @@ function setScreen(screen) {
   for(const [id,which] of [["boardTab","board"],["historyTab","history"]]) {$(id).classList.toggle("selected",screen===which);$(id).setAttribute("aria-pressed",String(screen===which));}
   $("windowChips").classList.toggle("hidden",screen!=="board");$("pageTitle").innerHTML=screen==="board"?'<span class="desktop-title">播放概况</span><span class="mobile-title">概况</span>':'<span class="desktop-title">播放记录</span><span class="mobile-title">记录</span>';
   $("manageMode").checked=false;syncSort();
-  if(isMobile()) window.scrollTo?.({top:0,behavior:"auto"});
+  if(isMobile()) {if(window.NovaEmbed)window.NovaEmbed.scrollTop();else window.scrollTo?.({top:0,behavior:"auto"});}
   loadData();
 }
 function syncSort() {$("sortSelect").innerHTML=SORTS[state.mode].map(([value,label])=>`<option value="${value}">${label}</option>`).join("");$("sortSelect").value=state.sort;}
@@ -274,7 +324,8 @@ function bindEvents() {
   $("fullscreenButton").addEventListener("click",async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch(_){toast("当前浏览器不支持全屏，可使用浏览器的全屏功能");}});
   document.addEventListener("fullscreenchange",()=>{const label=document.fullscreenElement?"退出全屏":"全屏展示";$("fullscreenButton").setAttribute("aria-label",label);$("fullscreenButton").title=label;});
 }
-async function init() {bindEvents();syncMobileLayout();updateFilterCount();
+async function init() {setupEmbeddedLayout();bindEvents();syncMobileLayout();updateFilterCount();
+  window.addEventListener("pageshow",event=>{if(event.persisted)setupEmbeddedLayout();});
   let resizeTimer;window.addEventListener("resize",()=>{syncMobileLayout();clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(state.screen==="board"&&state.board)renderTrend(state.board.daily||[]);},150);});
   syncSort();updateClock();setInterval(()=>{if(!document.hidden)updateClock();},1000);updateAutoRefresh();await loadData();}
 init();

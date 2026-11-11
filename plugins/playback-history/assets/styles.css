@@ -1,29 +1,29 @@
 /* 手机优先：中性白、墨色文字、蓝色重点。所有颜色随主题切换。 */
 :root {
   color-scheme: light;
-  --bg:#f6f7f9; --surface:#fff; --surface-high:#fafbfc; --well:#f1f3f6;
-  --text:#171c26; --text-secondary:#465163; --muted:#626c79;
-  --line:#e7eaf0; --line-strong:#cfd6e2; --accent:#2458d3; --accent-soft:#edf2ff;
+  --bg:#f4f4f5; --surface:#fff; --surface-high:#fafafa; --well:#f4f4f5;
+  --text:#18181b; --text-secondary:#52525b; --muted:#71717a;
+  --line:#e4e4e7; --line-strong:#d4d4d8; --accent:#2458d3; --accent-soft:#edf2ff;
   --blue:#7b55cd; --blue-soft:#f3eefb; --purple:#0c8077; --purple-soft:#e8f5f1;
   --amber:#91601a; --amber-soft:#fff4df; --danger-text:#b0304b;
   --danger-bg:#fff0f3; --danger-line:#eebdca; --track:#e9edf5;
   --hero:#2458d3; --hero-text:#fff; --hero-muted:#e5ecff;
   --poster-start:#e5eaf2; --poster-end:#d7dfeb; --poster-text:#526279;
-  --chart-bar:#6f8cc7; --shadow:0 3px 18px #1c2c4605; --header:#ffffff;
-  --radius:18px;
-  font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --chart-bar:#6f8cc7; --shadow:none; --header:#ffffff;
+  --radius:16px;
+  font:15px/1.5 system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
 }
 :root[data-theme="dark"] {
   color-scheme:dark;
-  --bg:#10141d; --surface:#191f2b; --surface-high:#1d2532; --well:#222b3a;
-  --text:#f0f3f8; --text-secondary:#c0cad9; --muted:#a0adbe;
-  --line:#2b3545; --line-strong:#455570; --accent:#94b0ff; --accent-soft:#283752;
+  --bg:#18181b; --surface:#232326; --surface-high:#27272a; --well:#2e2e32;
+  --text:#f4f4f5; --text-secondary:#d4d4d8; --muted:#a1a1aa;
+  --line:#333338; --line-strong:#52525b; --accent:#94b0ff; --accent-soft:#283752;
   --blue:#c0a4f1; --blue-soft:#352d49; --purple:#88cdbd; --purple-soft:#243b38;
   --amber:#edc18a; --amber-soft:#3c3124; --danger-text:#f4a7bb;
   --danger-bg:#3c2832; --danger-line:#724457; --track:#303c50;
   --hero:#293f76; --hero-text:#fff; --hero-muted:#dfe8ff;
   --poster-start:#344258; --poster-end:#293448; --poster-text:#c2cddd;
-  --chart-bar:#5874b0; --shadow:none; --header:#191f2b;
+  --chart-bar:#5874b0; --shadow:none; --header:#232326;
 }
 * { box-sizing:border-box; }
 html { -webkit-text-size-adjust:100%; scroll-padding-top:100px; }
@@ -89,9 +89,7 @@ select { cursor:pointer; }
 .metric-value strong { max-width:100%; min-width:0; font-size:44px; font-weight:750; letter-spacing:-1.8px; line-height:1.1; overflow-wrap:anywhere; }
 .metric-value>span { font-size:12px; color:var(--muted); }
 .metric p { font-size:12px; color:var(--muted); margin:12px 0 0; line-height:1.6; }
-.metric:first-child { color:var(--hero-text); background:var(--hero); border-color:var(--hero); }
-.metric:first-child .metric-label,.metric:first-child .metric-value>span,.metric:first-child p { color:var(--hero-muted); }
-.metric:first-child .metric-icon { color:var(--hero-text); background:#ffffff20; }
+.metric:first-child .metric-value strong { color:var(--accent); }
 
 /* 内容模块 */
 .board-grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr); grid-template-areas:"trend trend users" "sessions popular distribution"; gap:18px; order:1; }
@@ -308,4 +306,21 @@ h3 { margin:0; font-size:14px; font-weight:600; }
   .metric { padding:12px; }.metric-label { font-size:11px; }.metric-value strong { font-size:28px; }.metric p { font-size:10px; }.metric-icon { width:22px; height:22px; }
   .panel { padding:15px; }.legend { font-size:10px; }.filters .date-field { grid-column:1/-1; }.type-chart { gap:13px; }.donut { width:100px; height:100px; }
   .recent-card { padding:12px; gap:10px; }.popular-row { gap:10px; }.rank-row { gap:7px; }.rank-meta { font-size:11px; }
+}
+
+/* 与新版官方 hello 示例一致的自然文档流；同源内嵌时交给宿主滚动。 */
+#openWindowButton { text-decoration:none; }
+html[data-embedded="true"],html[data-embedded="true"] body { height:auto; min-height:0; }
+html[data-embedded="true"] .masthead { position:static; padding:16px; gap:16px; flex-wrap:wrap; }
+html[data-embedded="true"] .brand-mark,html[data-embedded="true"] .brand small,html[data-embedded="true"] .clock,html[data-embedded="true"] .connection { display:none; }
+html[data-embedded="true"] .brand strong { font-size:18px; }
+html[data-embedded="true"] .masthead-right { gap:8px; }
+html[data-embedded="true"] .shell { max-width:none; padding:20px 16px 0; }
+html[data-embedded="true"] .toast { position:sticky; left:auto; bottom:16px; transform:none; margin:0 auto 16px; }
+@media(max-width:760px) {
+  html[data-embedded="true"] .masthead { padding:12px 16px; }
+  html[data-embedded="true"] .view-tabs { position:static; inset:auto; order:3; flex-basis:100%; padding:8px 0 0; border:0; background:none; }
+  html[data-embedded="true"] .view-tabs .tab { flex:1; min-height:44px; flex-direction:row; gap:8px; }
+  html[data-embedded="true"] .shell { padding:18px 16px 0; }
+  html[data-embedded="true"] .toast { bottom:12px; }
 }

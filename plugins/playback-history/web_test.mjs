@@ -7,7 +7,7 @@ const html=readFileSync(new URL("./assets/index.html",import.meta.url),"utf8");
 const themeSource=readFileSync(new URL("./assets/theme.js",import.meta.url),"utf8");
 const source=readFileSync(new URL("./assets/app.js",import.meta.url),"utf8").replace(/init\(\);\s*$/,"");
 function page(fetch,pathname="/history",options={}) {
-  const elements=new Map(),intervals=new Map(),documentEvents=new Map();let intervalID=0;
+  const elements=new Map(),intervals=new Map(),documentEvents=new Map(),frames=[],observers=[];let intervalID=0;
   for(const match of html.matchAll(/<[^>]+id="([^"]+)"[^>]*>/g)) {
     const classes=new Set((match[0].match(/class="([^"]+)"/)?.[1]||"").split(" "));
     const attrs=new Map(),listeners=new Map(),child={textContent:""};
@@ -22,14 +22,22 @@ function page(fetch,pathname="/history",options={}) {
   const windowEvents=new Map();
   const storage=options.blockStorage?{getItem(){throw new Error("blocked");},setItem(){throw new Error("blocked");}}:{getItem:key=>saved.get(key)||null,setItem:(key,value)=>saved.set(key,value)};
   const window={innerWidth:options.width||1440,matchMedia(){return {matches:this.innerWidth<=760};},scrollTo(){},addEventListener:(key,value)=>windowEvents.set(key,value),localStorage:storage};
+  window.self=window;window.top=options.embedded?{}:window;
+  window.frameElement=options.frame||null;
+  if(options.blockFrame)Object.defineProperty(window,"frameElement",{get(){throw new Error("cross origin");}});
+  window.requestAnimationFrame=callback=>frames.push(callback);
+  window.removeEventListener=(key,value)=>{if(windowEvents.get(key)===value)windowEvents.delete(key);};
   const meta={attrs:new Map(),setAttribute(key,value){this.attrs.set(key,value);}};
   const document={cookie:options.cookie||"",hidden:false,fullscreenEnabled:options.fullscreenEnabled??true,fullscreenElement:null,documentElement:{dataset:{theme:"light"},requestFullscreen:async()=>{}},querySelector:()=>meta,
     getElementById:id=>elements.get(id)||null,querySelectorAll:()=>[],addEventListener:(k,v)=>documentEvents.set(k,v)};
-  const context=vm.createContext({document,window,location:{pathname},fetch,Headers,URLSearchParams,AbortController,setTimeout,clearTimeout,
+  document.body={height:800,getBoundingClientRect(){return {height:this.height};}};
+  document.removeEventListener=(key,value)=>{if(documentEvents.get(key)===value)documentEvents.delete(key);};
+  class ResizeObserver {constructor(callback){this.callback=callback;observers.push(this);}observe(target){this.target=target;}disconnect(){this.disconnected=true;}}
+  const context=vm.createContext({document,window,ResizeObserver:options.noObserver?undefined:ResizeObserver,location:{pathname},fetch,Headers,URLSearchParams,AbortController,setTimeout,clearTimeout,
     setInterval(fn,ms){const id=++intervalID;intervals.set(id,{fn,ms});return id;},clearInterval:id=>intervals.delete(id),confirm:()=>options.confirm??false});
   vm.runInContext(themeSource,context);
   vm.runInContext(source,context);
-  return {context,elements,document,intervals,saved,meta,windowEvents,run:code=>vm.runInContext(code,context)};
+  return {context,elements,document,intervals,saved,meta,windowEvents,observers,flushFrames(){for(const callback of frames.splice(0))callback();},run:code=>vm.runInContext(code,context)};
 }
 const response=data=>({ok:true,json:async()=>data});
 const board=(plays=4)=>({at:"2026-11-08T12:00:00Z",from:"2026-10-10",to:"2026-11-08",days:30,stats:{totalPlayCount:plays,totalWatchSeconds:7200,uniqueItems:2,completedCount:1},today:{totalPlayCount:1,totalWatchSeconds:100},activeTotal:0,active:[],recent:[],users:[],popular:[],daily:[{date:"2026-11-08",watchSeconds:7200,playCount:plays}],hours:Array.from({length:24},(_,hour)=>({hour,playCount:hour===12?plays:0})),types:[{type:"Movie",count:plays}]});
@@ -90,13 +98,13 @@ test("自动刷新跳过后台标签页，支持 /emby/history 前缀",async()=>
 test("首次默认亮色，右上角可切换并在下次打开恢复选择",()=>{
   const p=page(async()=>response(board()));
   assert.equal(p.document.documentElement.dataset.theme,"light");
-  assert.equal(p.meta.attrs.get("content"),"#f6f7f9");
+  assert.equal(p.meta.attrs.get("content"),"#f4f4f5");
   p.run("bindEvents()");
   p.elements.get("themeButton").listeners.get("click")();
   assert.equal(p.document.documentElement.dataset.theme,"dark");
   assert.equal(p.elements.get("themeButton").attrs.get("aria-label"),"切换到亮色主题");
   assert.equal(p.elements.get("themeButton").attrs.get("aria-pressed"),"true");
-  assert.equal(p.meta.attrs.get("content"),"#10141d");
+  assert.equal(p.meta.attrs.get("content"),"#18181b");
   const restored=page(async()=>response(board()),"/history",{theme:p.saved.get("novaemby.playback-history.theme")});
   assert.equal(restored.document.documentElement.dataset.theme,"dark");
   restored.run("window.NovaTheme.toggle()");
@@ -242,4 +250,62 @@ test("持续进度更新恢复会话活跃提示并刷新进度条",async()=>{
   assert.ok(!p.elements.get("activeList").innerHTML.includes("超过 15 分钟无事件"));
   assert.match(p.elements.get("activeList").innerHTML,/最后事件/);
   assert.match(p.elements.get("activeList").innerHTML,/data-width="65"/);
+});
+
+function frameFixture() {
+  const values=new Map([["height",["480px",""]],["max-height",["600px",""]],["border",["0",""]]]);
+  return {values,scrolled:false,scrollIntoView(){this.scrolled=true;},style:{
+    getPropertyValue:name=>values.get(name)?.[0]||"",getPropertyPriority:name=>values.get(name)?.[1]||"",
+    setProperty(name,value,priority=""){values.set(name,[value,priority]);},removeProperty:name=>values.delete(name)
+  }};
+}
+
+test("同源内嵌窗口随内容增高与缩小，离开时恢复原窗口样式",()=>{
+  const frame=frameFixture();
+  const p=page(async()=>response(board()),"/history",{embedded:true,frame,width:390});
+  p.run("setupEmbeddedLayout()");p.flushFrames();
+  assert.equal(p.document.documentElement.dataset.embedded,"true");
+  assert.equal(p.elements.get("openWindowButton").hidden,false);
+  assert.equal(frame.style.getPropertyValue("height"),"800px");
+  assert.equal(frame.style.getPropertyPriority("height"),"important");
+  assert.equal(frame.style.getPropertyValue("max-height"),"none");
+  assert.equal(p.observers[0].target,p.document.body);
+  p.document.body.height=1700;p.observers[0].callback();p.flushFrames();
+  assert.equal(frame.style.getPropertyValue("height"),"1700px");
+  p.document.body.height=460;p.observers[0].callback();p.flushFrames();
+  assert.equal(frame.style.getPropertyValue("height"),"460px");
+  p.document.fullscreenElement={};p.document.body.height=2000;p.observers[0].callback();p.flushFrames();
+  assert.equal(frame.style.getPropertyValue("height"),"460px");
+  p.document.fullscreenElement=null;
+  p.windowEvents.get("pagehide")();
+  assert.equal(p.observers[0].disconnected,true);
+  assert.equal(frame.style.getPropertyValue("height"),"480px");
+  assert.equal(frame.style.getPropertyValue("max-height"),"600px");
+  assert.equal(frame.style.getPropertyValue("border"),"0");
+  assert.equal(frame.style.getPropertyValue("width"),"");
+});
+
+test("内嵌切换看板/明细后更新高度，浏览器返回缓存页面时重新观察",async()=>{
+  const frame=frameFixture();
+  const p=page(async url=>response(url.endsWith("/users")?users:url.includes("/records")?{records:[],total:0,page:1,pages:0,stats:{}}:board()),"/emby/history/",{embedded:true,frame,width:390});
+  await p.run("init()");p.flushFrames();
+  p.document.body.height=1200;
+  p.run('setScreen("history")');
+  await new Promise(resolve=>setTimeout(resolve,0));p.flushFrames();
+  assert.equal(frame.style.getPropertyValue("height"),"1200px");
+  assert.equal(frame.scrolled,true);
+  p.windowEvents.get("pagehide")();
+  p.windowEvents.get("pageshow")({persisted:true});p.flushFrames();
+  assert.equal(p.observers.length,2);
+  assert.equal(frame.style.getPropertyValue("height"),"1200px");
+});
+
+test("直接访问和不能访问父框架时均可正常使用看板",async()=>{
+  for(const options of [{},{embedded:true,blockFrame:true},{embedded:true,noObserver:true,frame:frameFixture()}]) {
+    const p=page(async url=>response(url.endsWith("/users")?users:board()),"/history",options);
+    await p.run("init()");p.flushFrames();
+    assert.equal(p.elements.get("statPlays").textContent,"4");
+    assert.equal(p.document.documentElement.dataset.embedded,options.embedded?"true":undefined);
+    if(options.embedded)assert.equal(p.elements.get("openWindowButton").hidden,false);
+  }
 });

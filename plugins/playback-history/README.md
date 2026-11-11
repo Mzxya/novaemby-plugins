@@ -1,13 +1,13 @@
 # 历史播放记录 / 播放观测台
 
-NovaEmby 播放历史插件，当前版本 0.5.5。接收宿主事件并在 `/history` 提供手机优先的播放看板与历史查询页。
+NovaEmby 播放历史插件，当前版本 0.5.6。接收宿主事件并在 `/history` 提供手机优先的播放看板与历史查询页。
 
 ## 功能
 
 - 按用户记录电影、剧集和其他视频的播放会话，合并开始、暂停和停止事件。
 - 看板支持 7/30/90 天、关键指标、观看趋势、用户排行、热门内容、类型分布和未结束会话。
 - 手机使用单列卡片、固定导航、折叠筛选和触摸日期详情；桌面保留大屏排布。
-- 全新亮色界面：中性白、深色文字和蓝色重点，手机底部导航，默认亮色并保留暗色记忆。
+- 参考新版官方 hello 示例的灰白背景、细边框与圆角卡片，保留蓝色操作重点，默认亮色并保留暗色记忆。独立页面使用手机底部导航，宿主内嵌时导航随内容排列。
 - 最近播放可以直接点开对应内容记录；默认每 60 秒自动更新。
 - 接收播放进度事件，更新现有会话的进度与最后活跃时间；高频更新合并写盘，不增加播放次数。
 - 看板日期、时段、明细日期筛选和历史清理使用宿主时区，页面时间也跟随有效的宿主时区。
@@ -21,7 +21,7 @@ NovaEmby 播放历史插件，当前版本 0.5.5。接收宿主事件并在 `/hi
 2. 安装并启用插件。NovaEmby 16g 及以上，管理员可从左侧「插件 → 播放历史」直接打开内嵌看板，也可使用上方的「新窗口打开」「插件设置」。旧版本继续点击插件详情页的「主页」进入 `/history`。
 3. 播放视频后等待自动更新。插件只采集运行期间收到的事件，不能补录启用前的历史。
 
-菜单入口通过 manifest 的 `page` 声明，复用 `/history` 页面；`/emby/history` 前缀同样可用。查询携带同源登录 Cookie，删除与清空自动读取 `nova_csrf` Cookie 并附加 `X-Nova-CSRF`。宿主禁止内嵌页面全屏时隐藏全屏按钮；需要全屏可用宿主的「新窗口打开」。手机布局和独立主题记忆照常生效。
+菜单入口通过 manifest 的 `page` 声明，复用 `/history` 页面；`/emby/history` 前缀同样可用。查询携带同源登录 Cookie，删除与清空自动读取 `nova_csrf` Cookie 并附加 `X-Nova-CSRF`。宿主禁止内嵌页面全屏时隐藏全屏按钮；需要全屏可用宿主的「新窗口打开」。手机布局和独立主题记忆照常生效。同源内嵌窗口会根据内容高度展开或缩小，避免额外的固定高度小窗口；可用页头「独立打开」进入完整页面。宿主外层若仍强制限制高度，需要配合宿主调整容器。
 
 明细中的删除功能默认隐藏，勾选「管理记录」后才显示；清空需要确认，范围为所选用户全部历史，不受列表筛选限制。
 
@@ -41,18 +41,14 @@ NovaEmby 播放历史插件，当前版本 0.5.5。接收宿主事件并在 `/hi
 | 数据存储 | model.go、store.go、dashboard.go | 记录模型、JSONL、会话合并、查询与统一看板快照 |
 | 页面展示 | http.go、assets/ | 路由、嵌入式资源、主题和手机/桌面交互 |
 
-## 验证与构建
+## 同步与自动构建
 
-在仓库根目录执行：
+修改源码后，由用户在可联网终端同步个人仓库：
 
 ```bash
-go test -count=1 ./...
-go vet ./...
-node --check plugins/playback-history/assets/theme.js
-node --check plugins/playback-history/assets/app.js
-node plugins/playback-history/web_test.mjs
-go run ./tools/mkrepo check -plugin plugins/playback-history
-go run ./tools/mkrepo build -plugin plugins/playback-history -out plugins/插件安装包
+bash "/vol5/1000/MP-data/nova插件/tools/upload-to-github.sh" jenley
 ```
 
-安装包输出至 `plugins/插件安装包/`，包含 Linux amd64 / arm64；资源通过 go:embed 编入程序，修改页面后必须重新构建。具备 C 编译器和 CGO 的环境可运行 `go test -race -count=1 ./...`。
+助手不在本机编译或打包。个人仓库 GitHub Actions 自动执行前端与 Go 检查、编译 Linux amd64 / arm64、发布 Release 并更新 index.json。同步脚本验证发布结果后，将正式安装包下载到 `plugins/插件安装包/`。
+
+页面资源通过 go:embed 编入程序，页面改动同样由 CI 重新构建，无需本机安装 Go。
