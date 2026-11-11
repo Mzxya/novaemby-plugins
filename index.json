@@ -5,10 +5,23 @@
     {
       "id": "hello",
       "name": "示例插件",
-      "description": "演示插件的全部能力：配置项、HTTP 接口、读取条目信息、接收播放事件、写活动记录、保存数据、元数据来源、计划任务。可以作为写新插件的模板。",
+      "description": "演示插件的全部能力：配置项、HTTP 接口、自己的网页（左侧“插件”菜单）、读取条目信息、接收播放事件、写活动记录、保存数据、元数据来源、计划任务。可以作为写新插件的模板。",
       "author": "NovaEmby",
       "homepage": "https://github.com/Mzxya/novaemby-plugins",
       "versions": [
+        {
+          "version": "0.3.0",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/Mzxya/novaemby-plugins/releases/download/hello-v0.3.0/hello-0.3.0.zip",
+          "sha256": "967a5c125b2f056826b71bf0557729365f768b5aa412280308b73e19dcc60c16",
+          "size": 3189878,
+          "changelog": "- 新增：插件自己的网页（manifest `page`）：左侧“插件”菜单里打开，显示访问次数，可以清零（演示同源 fetch 与 `X-Nova-CSRF`）。\n- 新增接口 `GET /api/hello-page`、`POST /api/hello-stats/reset`（管理员）。\n- 网页需要 NovaEmby 16g；旧版本忽略 `page`，其余功能照常。",
+          "releasedAt": 1794381405
+        },
         {
           "version": "0.2.0",
           "protocol": 1,
