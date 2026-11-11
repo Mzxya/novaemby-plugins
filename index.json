@@ -57,6 +57,19 @@
       "homepage": "/history",
       "versions": [
         {
+          "version": "1.0.3",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/jenley/novaemby-plugins/releases/download/playback-history-v1.0.3/playback-history-1.0.3.zip",
+          "sha256": "5d8f461d6e0981bd8a5b5fb71b9d1f219db58034c5142b59d3cb6acdb695831a",
+          "size": 3680358,
+          "changelog": "从 1.0.2 升级至 1.0.3，同步本地源码更新。\n\n修改文件：\n\n- `plugins/playback-history/CHANGELOG/0.3.0.md`\n- `plugins/playback-history/CHANGELOG/0.3.1.md`\n- `plugins/playback-history/CHANGELOG/0.3.2.md`\n- `plugins/playback-history/CHANGELOG/0.4.0.md`\n- `plugins/playback-history/CHANGELOG/0.4.1.md`\n- `plugins/playback-history/CHANGELOG/0.4.2.md`\n- `plugins/playback-history/CHANGELOG/0.5.0.md`\n- `plugins/playback-history/CHANGELOG/0.5.1.md`\n- `plugins/playback-history/CHANGELOG/0.5.2.md`\n- `plugins/playback-history/CHANGELOG/0.5.3.md`\n- `plugins/playback-history/CHANGELOG/0.5.4.md`\n- `plugins/playback-history/CHANGELOG/0.5.5.md`\n- `plugins/playback-history/CHANGELOG/0.5.6.md`\n- `plugins/playback-history/CHANGELOG/1.0.0.md`\n- `plugins/playback-history/CHANGELOG/1.0.1.md`\n- `plugins/playback-history/README.md`\n- `plugins/playback-history/REBUILD.md`",
+          "releasedAt": 1794412869
+        },
+        {
           "version": "1.0.2",
           "protocol": 1,
           "platforms": [
