@@ -52,10 +52,23 @@
     {
       "id": "playback-history",
       "name": "历史播放记录",
-      "description": "NovaEmby 播放看板，手机优先并兼容大屏：统一展示播放概况、观看趋势、未结束会话、用户排行、热门内容和内容分布。支持 7/30/90 天、按用户查看、全屏展示及独立播放明细查询。开启系统播放开始/停止通知后采集历史。",
+      "description": "全新播放历史：手机优先的观看概况、时间线、会话进度、用户与内容统计。支持官方媒体信息预览、本地封面、同源封面地址、宿主时区、定时清理与历史媒体信息修复。",
       "author": "NovaEmby 社区",
       "homepage": "/history",
       "versions": [
+        {
+          "version": "1.0.0",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/jenley/novaemby-plugins/releases/download/playback-history-v1.0.0/playback-history-1.0.0.zip",
+          "sha256": "5f4e6876a51afd871a5f5571fea7c504b858073dcc730f8ef2150e3300f9f924",
+          "size": 3672055,
+          "changelog": "- 基于官方 SDK 协议 1 全新重建前后端：观看概况、最近观看、时间线、内容汇总、会话状态、自然日趋势和用户/内容排行。\n- 新增基于 host.item 的只读媒体详情与官方计划任务“修复历史媒体信息”。\n- 重写封面链路：从官方媒体路径读取本地封面；可选管理员验证的同源图片地址。剧集优先剧集封面，失败使用完整内容占位，不猜接口或提取 Token。\n- 重写会话及 JSONL 存储，兼容旧 history.jsonl 和记录 ID；高频进度合并写盘，结束及正常停机持久化，清理先提交文件再更新内存。\n- 不再按未知事件的数值形状猜媒体 ID，也不将丢失停止事件的会话无限累计为观看时间。\n- 统一宿主时区、自然日筛选和页面时间；优化请求竞态、失败重试、分页边界与管理确认。\n- 移除旧看板代码、旧测试及修改宿主 iframe 尺寸的脚本。新界面自然排布，默认亮色并记住暗色选择。\n- API 已重设计，旧 dashboard/items 等路径不再提供。插件 ID 和数据文件保持兼容，外部调用需要按新 manifest 迁移。",
+          "releasedAt": 1794408134
+        },
         {
           "version": "0.5.6",
           "protocol": 1,
