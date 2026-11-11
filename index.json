@@ -5,10 +5,23 @@
     {
       "id": "hello",
       "name": "示例插件",
-      "description": "演示插件的全部能力：配置项、HTTP 接口、读取条目信息、接收播放事件、写活动记录、保存数据、元数据来源、计划任务。可以作为写新插件的模板。",
+      "description": "演示插件的全部能力：配置项、HTTP 接口、自己的网页（左侧“插件”菜单）、读取条目信息、接收播放事件、写活动记录、保存数据、元数据来源、计划任务。可以作为写新插件的模板。",
       "author": "NovaEmby",
       "homepage": "https://github.com/Mzxya/novaemby-plugins",
       "versions": [
+        {
+          "version": "0.3.0",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/jenley/novaemby-plugins/releases/download/hello-v0.3.0/hello-0.3.0.zip",
+          "sha256": "2954c6faabdb3e0c2eeb125516df3f923ba2a43c2c44ffe40eecac64c3a93e51",
+          "size": 3189861,
+          "changelog": "- 新增：插件自己的网页（manifest `page`）：左侧“插件”菜单里打开，显示访问次数，可以清零（演示同源 fetch 与 `X-Nova-CSRF`）。\n- 新增接口 `GET /api/hello-page`、`POST /api/hello-stats/reset`（管理员）。\n- 网页需要 NovaEmby 16g；旧版本忽略 `page`，其余功能照常。",
+          "releasedAt": 1794391390
+        },
         {
           "version": "0.2.0",
           "protocol": 1,
@@ -33,6 +46,28 @@
           "sha256": "17e3a98d307c525e609ac3aa2062e0eed1fda27aae4ca29ee5641f8d8dac15aa",
           "size": 3169127,
           "releasedAt": 1792432648
+        }
+      ]
+    },
+    {
+      "id": "playback-history",
+      "name": "历史播放记录",
+      "description": "NovaEmby 播放看板，手机优先并兼容大屏：统一展示播放概况、观看趋势、未结束会话、用户排行、热门内容和内容分布。支持 7/30/90 天、按用户查看、全屏展示及独立播放明细查询。开启系统播放开始/停止通知后采集历史。",
+      "author": "NovaEmby 社区",
+      "homepage": "/history",
+      "versions": [
+        {
+          "version": "0.5.3",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/jenley/novaemby-plugins/releases/download/playback-history-v0.5.3/playback-history-0.5.3.zip",
+          "sha256": "9a58227a9d27b4568c83a1e4b30ef70b3ad49da526ab3d70fe464ef826f585ef",
+          "size": 3696013,
+          "changelog": "从 0.5.2 升级至 0.5.3，同步本地源码更新。\n\n同步官方 SDK / 构建工具，重新构建兼容版本。\n\n修改文件：",
+          "releasedAt": 1794391395
         }
       ]
     }
