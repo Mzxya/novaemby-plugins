@@ -57,6 +57,19 @@
       "homepage": "/history",
       "versions": [
         {
+          "version": "1.0.1",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/jenley/novaemby-plugins/releases/download/playback-history-v1.0.1/playback-history-1.0.1.zip",
+          "sha256": "ed2ef90e279a648d1ebc46d1ee619d2b6ab880f8d1a7bf5b12fecb9d01665988",
+          "size": 3677382,
+          "changelog": "- 新增默认关闭的「原始事件诊断日志」配置，保存后立即用于后续收到的事件。\n- 在事件解析与存储检查之前记录原始接收内容，包括无法识别的播放事件和进度事件，方便反馈宿主字段结构。\n- 长 JSON 按字符安全分段，包含 diagnosticId、事件名称、事件时间、原始字节数和 part；超过单事件上限时明确标记截断。\n- 保持既有事件解析、统计与历史数据行为，当前无法识别的字段仍需收集样本后适配。",
+          "releasedAt": 1794410416
+        },
+        {
           "version": "1.0.0",
           "protocol": 1,
           "platforms": [
