@@ -26,13 +26,17 @@ https://raw.githubusercontent.com/Mzxya/novaemby-plugins/main/index.json
 |路径|内容|
 |--|--|
 |`plugins/<插件ID>/`|一个插件：`manifest.json`、`main.go`，可选 `assets/`、`CHANGELOG/<版本>.md`。目录名必须等于插件 ID|
-|`plugins/hello/`|示例插件，演示全部能力，写新插件时复制它|
+|`plugins/hello/`|示例插件，演示全部能力（含自己的网页 `page`），写新插件时复制它|
 |`sdk/`|Go 开发包（`github.com/Mzxya/novaemby-plugins/sdk`）|
 |`tools/mkrepo/`|打包、维护 index.json、签名的工具|
 |`.github/workflows/release.yml`|检查、测试、发布（推送到 main 时运行；Pull Request 只检查不发布）|
 |`docs/插件开发教程.md`|完整教程|
 
 修改插件后**把 manifest 的 version 加一**再推送；版本号没变时不会重新发布。
+
+## 激活
+
+NovaEmby 16g 起，插件功能需要激活；未激活时插件不运行、不能安装或更新，激活后自动启动，已有的安装和数据都会保留。
 
 ## 安全
 

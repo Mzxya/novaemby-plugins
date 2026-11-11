@@ -112,6 +112,10 @@ type manifest struct {
 			Type string `json:"type"`
 		} `json:"defaultTriggers"`
 	} `json:"tasks"`
+	Page *struct {
+		Title string `json:"title"`
+		Path  string `json:"path"`
+	} `json:"page"`
 }
 
 var (
@@ -203,6 +207,20 @@ func parseManifest(b []byte) (*manifest, error) {
 			default:
 				return nil, fmt.Errorf("任务 %s 的触发器 type %q 不支持（daily、weekly、interval、startup）", t.Key, tr.Type)
 			}
+		}
+	}
+	if pg := m.Page; pg != nil {
+		if len([]rune(strings.TrimSpace(pg.Title))) > 24 {
+			return nil, errors.New("page.title 太长（最多 24 个字符）")
+		}
+		ok := false
+		for _, r := range m.Routes {
+			if strings.EqualFold(r.Method, "GET") && r.Path == pg.Path && !strings.ContainsAny(r.Path, "{*") {
+				ok = true
+			}
+		}
+		if !ok {
+			return nil, fmt.Errorf("page.path %q 必须是 routes 里一个不带参数的 GET 路由", pg.Path)
 		}
 	}
 	return &m, nil
