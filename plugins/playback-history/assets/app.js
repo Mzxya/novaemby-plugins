@@ -13,8 +13,16 @@ function duration(value) {const s=number(value),h=Math.floor(s/3600),m=Math.floo
 function localTime(raw) {return raw?new Date(raw).toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";}
 function userName() {return state.users.find(u=>u.key===state.user)?.name || (state.user?"所选用户":"全部用户");}
 function setConnection(kind,text) {$("connectionStatus").className=`connection ${kind}`;$("connectionStatus").querySelector("span").textContent=text;}
+function csrfToken() {
+  const match=document.cookie.match(/(?:^|;\s*)nova_csrf=([^;]*)/);
+  if(!match)return "";
+  try{return decodeURIComponent(match[1]);}catch(_){return "";}
+}
 async function api(path,options={}) {
   const headers=new Headers(options.headers||{});headers.set("Accept","application/json");if(options.body)headers.set("Content-Type","application/json");
+  if(!["GET","HEAD","OPTIONS"].includes((options.method||"GET").toUpperCase())) {
+    const token=csrfToken();if(token)headers.set("X-Nova-CSRF",token);
+  }
   const response=await fetch(BASE+path,{...options,headers,credentials:"same-origin"});
   if(!response.ok) {let message=`请求失败 (${response.status})`;try{message=(await response.json()).error||message;}catch(_){}throw new Error(message);}
   return response.json();
@@ -256,7 +264,7 @@ function bindEvents() {
   $("recordList").addEventListener("click",event=>{const button=event.target.closest("[data-delete]");if(button)deleteRecord(button.dataset.delete);});
   $("prevPage").addEventListener("click",()=>{if(state.page>1){state.page--;loadData();}});$("nextPage").addEventListener("click",()=>{if(state.page<state.pages){state.page++;loadData();}});
   $("autoRefresh").addEventListener("change",updateAutoRefresh);document.addEventListener("visibilitychange",()=>{if(!document.hidden){updateClock();if($("autoRefresh").checked)loadData(false);}});
-  if(!document.documentElement.requestFullscreen)$("fullscreenButton").hidden=true;
+  if(!document.documentElement.requestFullscreen||document.fullscreenEnabled===false)$("fullscreenButton").hidden=true;
   $("fullscreenButton").addEventListener("click",async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch(_){toast("当前浏览器不支持全屏，可使用浏览器的全屏功能");}});
   document.addEventListener("fullscreenchange",()=>{const label=document.fullscreenElement?"退出全屏":"全屏展示";$("fullscreenButton").setAttribute("aria-label",label);$("fullscreenButton").title=label;});
 }

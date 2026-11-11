@@ -1,11 +1,16 @@
 {
   "id": "playback-history",
   "name": "历史播放记录",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "protocol": 1,
   "description": "NovaEmby 播放看板，手机优先并兼容大屏：统一展示播放概况、观看趋势、未结束会话、用户排行、热门内容和内容分布。支持 7/30/90 天、按用户查看、全屏展示及独立播放明细查询。开启系统播放开始/停止通知后采集历史。",
   "author": "NovaEmby 社区",
   "homepage": "/history",
+  "page": {
+    "title": "播放历史",
+    "path": "/history",
+    "icon": "history"
+  },
   "entry": {
     "linux/amd64": "bin/playback-history-linux-amd64",
     "linux/arm64": "bin/playback-history-linux-arm64"

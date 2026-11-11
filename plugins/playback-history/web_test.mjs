@@ -23,10 +23,10 @@ function page(fetch,pathname="/history",options={}) {
   const storage=options.blockStorage?{getItem(){throw new Error("blocked");},setItem(){throw new Error("blocked");}}:{getItem:key=>saved.get(key)||null,setItem:(key,value)=>saved.set(key,value)};
   const window={innerWidth:options.width||1440,matchMedia(){return {matches:this.innerWidth<=760};},scrollTo(){},addEventListener:(key,value)=>windowEvents.set(key,value),localStorage:storage};
   const meta={attrs:new Map(),setAttribute(key,value){this.attrs.set(key,value);}};
-  const document={hidden:false,fullscreenElement:null,documentElement:{dataset:{theme:"light"},requestFullscreen:async()=>{}},querySelector:()=>meta,
+  const document={cookie:options.cookie||"",hidden:false,fullscreenEnabled:options.fullscreenEnabled??true,fullscreenElement:null,documentElement:{dataset:{theme:"light"},requestFullscreen:async()=>{}},querySelector:()=>meta,
     getElementById:id=>elements.get(id)||null,querySelectorAll:()=>[],addEventListener:(k,v)=>documentEvents.set(k,v)};
   const context=vm.createContext({document,window,location:{pathname},fetch,Headers,URLSearchParams,AbortController,setTimeout,clearTimeout,
-    setInterval(fn,ms){const id=++intervalID;intervals.set(id,{fn,ms});return id;},clearInterval:id=>intervals.delete(id),confirm:()=>false});
+    setInterval(fn,ms){const id=++intervalID;intervals.set(id,{fn,ms});return id;},clearInterval:id=>intervals.delete(id),confirm:()=>options.confirm??false});
   vm.runInContext(themeSource,context);
   vm.runInContext(source,context);
   return {context,elements,document,intervals,saved,meta,windowEvents,run:code=>vm.runInContext(code,context)};
@@ -166,4 +166,49 @@ test("最近播放卡片进入该内容记录，清除旧筛选并保持管理�
   assert.equal(p.elements.get("manageMode").checked,false);
   assert.equal(p.elements.get("filterCount").textContent,"已选 1 项");
   assert.ok(requests.some(url=>url.includes("/records?")&&new URLSearchParams(url.split("?")[1]).get("q")==="测试影片"));
+});
+
+test("内嵌看板的删除和清空带宿主 CSRF，读取请求沿用同源登录",async()=>{
+  const requests=[];
+  const p=page(async(url,options)=>{
+    requests.push({url,options});
+    if(options.method==="DELETE")return response({deleted:true});
+    if(options.method==="POST")return response({removed:2});
+    return response(url.endsWith("/users")?users:board());
+  },"/emby/history/",{cookie:"other=1; nova_csrf=first%2Btoken%3D; session=private",confirm:true});
+  await p.run("init()");
+  assert.ok(requests.every(r=>r.options.credentials==="same-origin"));
+  assert.ok(requests.every(r=>!r.options.headers.has("X-Nova-CSRF")));
+  p.elements.get("manageMode").checked=true;
+  await p.run('deleteRecord("记录/1")');
+  const deletion=requests.find(r=>r.options.method==="DELETE");
+  assert.equal(deletion.url,"/emby/history/records/%E8%AE%B0%E5%BD%95%2F1");
+  assert.equal(deletion.options.headers.get("X-Nova-CSRF"),"first+token=");
+  p.document.cookie="nova_csrf=renewed-token";
+  await p.run("clearRecords()");
+  const clearing=requests.find(r=>r.options.method==="POST");
+  assert.equal(clearing.url,"/emby/history/clear");
+  assert.equal(clearing.options.headers.get("X-Nova-CSRF"),"renewed-token");
+  assert.equal(clearing.options.headers.get("Content-Type"),"application/json");
+  assert.equal(JSON.parse(clearing.options.body).confirm,true);
+});
+
+test("直接访问没有 Cookie 或 Cookie 编码损坏时仍能请求接口",async()=>{
+  for(const cookie of ["","nova_csrf=%broken","other_nova_csrf=unrelated"]) {
+    const requests=[];
+    const p=page(async(url,options)=>{requests.push({url,options});return response({removed:0});},"/history",{cookie});
+    await p.run('api("/clear",{method:"POST",body:JSON.stringify({confirm:true})})');
+    assert.equal(requests.length,1);
+    assert.equal(requests[0].url,"/history/clear");
+    assert.equal(requests[0].options.headers.has("X-Nova-CSRF"),false);
+  }
+});
+
+test("内嵌框禁止全屏时隐藏入口，仍可查询看板和切换主题",async()=>{
+  const p=page(async url=>response(url.endsWith("/users")?users:board()),"/history",{fullscreenEnabled:false,width:390});
+  await p.run("init()");
+  assert.equal(p.elements.get("fullscreenButton").hidden,true);
+  assert.equal(p.elements.get("statPlays").textContent,"4");
+  p.elements.get("themeButton").listeners.get("click")();
+  assert.equal(p.document.documentElement.dataset.theme,"dark");
 });
