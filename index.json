@@ -57,6 +57,19 @@
       "homepage": "/history",
       "versions": [
         {
+          "version": "0.5.6",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/jenley/novaemby-plugins/releases/download/playback-history-v0.5.6/playback-history-0.5.6.zip",
+          "sha256": "5b493494754b26500161e692e3505fc24c07b97da7dc483ca4e1eb6467634f64",
+          "size": 3901315,
+          "changelog": "- 以用户提供的最新版官方 ZIP 中 hello 0.3.0 页面为风格参考：灰白背景、细边框、16px 圆角和简洁系统字体；保留亮暗主题切换及统计内容。\n- 同源内嵌 iframe 随内容自动增高或缩小，响应数据加载、视图切换、筛选展开和窗口宽度变化；离开页面时恢复原 iframe 样式。\n- 内嵌手机页面改为自然排列的导航和提示，避免固定底栏落到长 iframe 底部；增加独立打开入口。\n- 沿用 0.5.5 的进度事件和宿主时区功能，数据格式和访问路径不变。",
+          "releasedAt": 1794393593
+        },
+        {
           "version": "0.5.5",
           "protocol": 1,
           "platforms": [
