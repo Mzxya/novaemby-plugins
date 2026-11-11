@@ -1,9 +1,9 @@
 {
   "id": "hello",
   "name": "示例插件",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "protocol": 1,
-  "description": "演示插件的全部能力：配置项、HTTP 接口、读取条目信息、接收播放事件、写活动记录、保存数据、元数据来源、计划任务。可以作为写新插件的模板。",
+  "description": "演示插件的全部能力：配置项、HTTP 接口、自己的网页（左侧“插件”菜单）、读取条目信息、接收播放事件、写活动记录、保存数据、元数据来源、计划任务。可以作为写新插件的模板。",
   "author": "NovaEmby",
   "homepage": "https://github.com/Mzxya/novaemby-plugins",
   "entry": {
@@ -29,8 +29,23 @@
       "method": "GET",
       "path": "/api/hello-stats",
       "auth": "admin"
+    },
+    {
+      "method": "GET",
+      "path": "/api/hello-page",
+      "auth": "admin"
+    },
+    {
+      "method": "POST",
+      "path": "/api/hello-stats/reset",
+      "auth": "admin"
     }
   ],
+  "page": {
+    "title": "示例插件",
+    "path": "/api/hello-page",
+    "icon": "smile"
+  },
   "config": [
     {
       "key": "greeting",
