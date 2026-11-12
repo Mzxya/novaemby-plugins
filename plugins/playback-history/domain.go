@@ -80,7 +80,7 @@ func pick(m map[string]any, names ...string) any { for _, n := range names { if 
 func first(a,b string) string { if a!="" { return a }; return b }
 func boolean(v any) bool { b,_ := v.(bool); return b }
 
-// Only documented fields and the explicitly observed legacy mapping are recognized.
+// Only documented fields and the explicitly observed current mapping are recognized.
 // Unknown IDs are not inferred from arbitrary numbers, names, or timestamps.
 func decodePlayback(raw []byte, at time.Time) (EventData,error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw)); decoder.UseNumber()

@@ -1,7 +1,7 @@
 {
   "id": "playback-history",
   "name": "历史播放记录",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "protocol": 1,
   "description": "全新播放历史：手机优先的观看概况、时间线、会话进度、用户与内容统计。支持官方媒体信息预览、本地封面、同源封面地址、宿主时区、定时清理与历史媒体信息修复。",
   "author": "NovaEmby 社区",

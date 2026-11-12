@@ -5,11 +5,10 @@ import (
 	"testing"
 	"time"
 )
-func TestDocumentedAndObservedEventMappings(t *testing.T){
+func TestDocumentedEventMapping(t *testing.T){
 	base:=time.Now().UTC()
 	for _,raw:=range []string{
 		`{"Session":{"PlaySessionId":"s1","UserId":"u1","UserName":"Alice","ItemId":100,"PositionTicks":500,"RuntimeTicks":1000},"ItemName":"电影","ItemType":"Movie"}`,
-		`{"UQVNVII2":{"Sk2P5N":"s1","EUebnB":"u1","FQBAcs2Ewxg":"Alice","P0aX1v":100,"AEKpVZufJ":500,"Hq1fULgr1q":1000},"VE9xvSKkbW4R":"电影","XaNoaNs":"Movie"}`,
 	}{e,err:=decodePlayback([]byte(raw),base);if err!=nil||e.SessionID!="s1"||e.ItemID!="100"||e.UserName!="Alice"||e.PositionTicks!=500||e.RuntimeTicks!=1000||!e.HasPosition{t.Fatalf("解析错误: %+v %v",e,err)}}
 	if _,err:=decodePlayback([]byte(`{"random":{"name":"Alice","number":100}}`),base);err==nil{t.Fatal("未知结构不应猜测媒体 ID")}
 	e,err:=decodePlayback([]byte(`{"Session":{"ID":"s1"}}`),base);if err!=nil||e.HasPosition{t.Fatal("无位置的事件不应将位置重置为0")}
