@@ -1,0 +1,181 @@
+{
+  "id": "playback-history",
+  "name": "历史播放记录",
+  "version": "0.1.0",
+  "protocol": 1,
+  "description": "全新播放历史：手机优先的观看概况、时间线、会话进度、用户与内容统计。支持官方媒体信息预览、本地封面、同源封面地址、宿主时区、定时清理与历史媒体信息修复。",
+  "author": "jenley",
+  "homepage": "https://github.com/jenley/novaemby-plugins",
+  "page": {
+    "title": "播放历史",
+    "path": "/history",
+    "icon": "history"
+  },
+  "entry": {
+    "linux/amd64": "bin/playback-history-linux-amd64",
+    "linux/arm64": "bin/playback-history-linux-arm64"
+  },
+  "events": [
+    "playback.started",
+    "playback.paused",
+    "playback.progress",
+    "playback.stopped",
+    "user.created",
+    "user.updated",
+    "user.deleted"
+  ],
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/history",
+      "auth": "admin"
+    },
+    {
+      "method": "GET",
+      "path": "/history/",
+      "auth": "admin"
+    },
+    {
+      "method": "GET",
+      "path": "/history/app.js",
+      "auth": "admin"
+    },
+    {
+      "method": "GET",
+      "path": "/history/theme.js",
+      "auth": "admin"
+    },
+    {
+      "method": "GET",
+      "path": "/history/styles.css",
+      "auth": "admin"
+    },
+    {
+      "method": "GET",
+      "path": "/history/core.mjs",
+      "auth": "admin"
+    },
+    {
+      "method": "GET",
+      "path": "/history/bootstrap",
+      "auth": "admin"
+    },
+    {
+      "method": "GET",
+      "path": "/history/overview",
+      "auth": "admin"
+    },
+    {
+      "method": "GET",
+      "path": "/history/records",
+      "auth": "admin"
+    },
+    {
+      "method": "GET",
+      "path": "/history/media/{id}",
+      "auth": "admin"
+    },
+    {
+      "method": "GET",
+      "path": "/history/poster/{id}",
+      "auth": "admin"
+    },
+    {
+      "method": "DELETE",
+      "path": "/history/records/{id}",
+      "auth": "admin"
+    },
+    {
+      "method": "POST",
+      "path": "/history/clear",
+      "auth": "admin"
+    }
+  ],
+  "config": [
+    {
+      "key": "recordMovies",
+      "type": "bool",
+      "label": "记录电影",
+      "description": "记录电影的开始、暂停和停止播放事件。",
+      "default": true
+    },
+    {
+      "key": "recordEpisodes",
+      "type": "bool",
+      "label": "记录剧集",
+      "description": "记录电视剧单集，并显示剧名、季号和集号。",
+      "default": true
+    },
+    {
+      "key": "recordOther",
+      "type": "bool",
+      "label": "记录其他视频",
+      "description": "记录电影和剧集之外的视频类型，例如音乐视频或私人录像。",
+      "default": false
+    },
+    {
+      "key": "retentionDays",
+      "type": "int",
+      "label": "历史保留天数",
+      "description": "每天自动清理早于该天数的播放记录；0 表示不按时间清理。",
+      "default": 365,
+      "min": 0,
+      "max": 3650
+    },
+    {
+      "key": "maxRecords",
+      "type": "int",
+      "label": "最多保留记录数",
+      "description": "超出后优先删除最早的记录，避免数据文件无限增长。",
+      "default": 50000,
+      "min": 1000,
+      "max": 500000
+    },
+    {
+      "key": "completionPercent",
+      "type": "int",
+      "label": "看完判定进度",
+      "description": "停止播放时，达到该播放进度百分比就标记为已看完。",
+      "default": 90,
+      "min": 50,
+      "max": 100
+    },
+    {
+      "key": "posterPathTemplate",
+      "type": "string",
+      "label": "宿主封面地址（可选）",
+      "description": "仅在已确认宿主图片接口时填写同源路径，必须包含 {id}，如由管理员提供的实际图片地址。留空只读取媒体旁的 poster.jpg、folder.jpg 等本地封面。不填 Token 或域名。",
+      "default": "",
+      "maxLength": 1000
+    },
+    {
+      "key": "verboseEventLog",
+      "type": "bool",
+      "label": "原始事件诊断日志",
+      "description": "默认关闭。开启后日志中会包含用户名、设备信息及原始事件 JSON（含进度事件），用于诊断反馈；保存后对后续事件生效，收集完成请关闭。长数据按 diagnosticId 和 part 分段，单事件超过 131072 字符会标记截断。",
+      "default": false
+    }
+  ],
+  "memoryLimitMb": 256,
+  "tasks": [
+    {
+      "key": "Cleanup",
+      "name": "清理过期播放记录",
+      "description": "按照插件配置删除过期或超出数量上限的记录，并压缩数据文件。",
+      "defaultEnabled": true,
+      "defaultTriggers": [
+        {
+          "type": "daily",
+          "time": "04:20"
+        }
+      ]
+    },
+    {
+      "key": "RepairMetadata",
+      "name": "修复历史媒体信息",
+      "description": "重新读取最近 2000 条历史的媒体名称、剧集及总时长，不修改媒体库。",
+      "defaultEnabled": false,
+      "defaultTriggers": []
+    }
+  ]
+}
