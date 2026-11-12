@@ -57,6 +57,19 @@
       "homepage": "/history",
       "versions": [
         {
+          "version": "1.0.4",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/jenley/novaemby-plugins/releases/download/playback-history-v1.0.4/playback-history-1.0.4.zip",
+          "sha256": "4466dc2e77e8f7f2d49f2fe8a675c948d7cbc015a6a455f1acb2c1756edcf1f9",
+          "size": 3679795,
+          "changelog": "- 根据 2026-11-12 原始播放日志，将混淆事件映射替换为当前 IitkoSG 格式；删除之前两版映射及过期样本。\n- 正确读取当前的用户、设备、媒体 ID、播放会话、剧集名称、进度、总时长和暂停标志，保留原文事件时间的亚秒精度。\n- 官方标准 Session 结构继续支持，历史 JSONL 数据兼容保持；进度只更新现有会话，不凭进度上报补建播放次数。\n- 测试使用脱敏后的当前反馈样本，验证连续进度、暂停恢复、ID 回退、时间冲突及缺失开始事件行为。",
+          "releasedAt": 1794464587
+        },
+        {
           "version": "1.0.3",
           "protocol": 1,
           "platforms": [
