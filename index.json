@@ -48,6 +48,28 @@
           "releasedAt": 1792432648
         }
       ]
+    },
+    {
+      "id": "playback-history",
+      "name": "历史播放记录",
+      "description": "全新播放历史：手机优先的观看概况、时间线、会话进度、用户与内容统计。支持官方媒体信息预览、本地封面、同源封面地址、宿主时区、定时清理与历史媒体信息修复。",
+      "author": "jenley",
+      "homepage": "https://github.com/jenley/novaemby-plugins",
+      "versions": [
+        {
+          "version": "0.1.0",
+          "protocol": 1,
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ],
+          "url": "https://github.com/Mzxya/novaemby-plugins/releases/download/playback-history-v0.1.0/playback-history-0.1.0.zip",
+          "sha256": "9378a9276aa0afb7497a9fdcea2e7f894f1d8e38d6fc3a47afb3f04d00cd547c",
+          "size": 3678277,
+          "changelog": "- 首次向官方仓库提交，由 jenley 维护的播放历史插件。\n- 管理员可查看观看概况、播放时间线、会话进度、用户与内容统计及只读媒体详情；所有路由均要求管理员，代码同时校验登录身份。\n- 仅按官方标准 Session 事件字段解析，不依赖编译混淆产生的字段名。\n- 支持宿主时区、历史 JSONL、定时清理和媒体信息修复，进度合并写盘。\n- 封面来自可访问的媒体旁文件，或管理员已验证的同源图片路径；无可用封面时显示占位。\n- 原始事件诊断默认关闭，配置说明明确开启后会记录用户名和设备信息。",
+          "releasedAt": 1794555255
+        }
+      ]
     }
   ]
 }
